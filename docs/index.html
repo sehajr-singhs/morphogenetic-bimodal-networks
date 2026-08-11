@@ -3,265 +3,354 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Morphogenetic Bi-Modal Networks — angles are the computation</title>
-<meta name="description" content="A gradient-free, locally-streaming neural architecture in which a 3D angle channel multiplies the weight channel: weights say how strongly, angles say where. Papers, playable demo, figures, and code.">
+<title>Morphogenetic Bi-Modal Networks — Angles are the Computation</title>
+<meta name="description" content="A gradient-free, locally-streaming neural architecture with a 3D angle channel that multiplies the weight channel: weights say how strongly, angles say where. Papers, playable demo, figures, and code.">
 <style>
   :root {
-    --bg: #0e1116;
-    --panel: #161b24;
-    --panel2: #1d2431;
-    --ink: #e8ecf3;
-    --muted: #9aa7ba;
-    --accent: #58d6a8;
-    --accent2: #6ea8ff;
-    --line: #2a3444;
+    --ink: #101418;
+    --muted: #5c6672;
+    --faint: #8b94a1;
+    --paper: #ffffff;
+    --bg: #fafafa;
+    --line: #e4e7eb;
+    --accent: #0a7d5c;
+    --accent-soft: #e6f4ee;
   }
   * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
   body {
-    margin: 0; background: var(--bg); color: var(--ink);
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    line-height: 1.55;
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
   }
-  .wrap { max-width: 980px; margin: 0 auto; padding: 0 22px 80px; }
-  header {
-    padding: 46px 0 26px;
+  .col { max-width: 900px; margin: 0 auto; padding: 0 24px; }
+
+  /* ── nav ─────────────────────────────────────────── */
+  nav {
+    position: sticky; top: 0; z-index: 10;
+    background: rgba(250,250,250,.86);
+    backdrop-filter: blur(10px);
     border-bottom: 1px solid var(--line);
-    background: radial-gradient(1100px 340px at 20% -40px, rgba(88,214,168,.12), transparent 60%),
-                radial-gradient(900px 300px at 90% -60px, rgba(110,168,255,.10), transparent 55%);
   }
-  .kicker { color: var(--accent); font-size: 13px; letter-spacing: .14em; text-transform: uppercase; font-weight: 600; }
-  h1 { font-size: 40px; line-height: 1.12; margin: 10px 0 12px; letter-spacing: -.01em; }
-  h1 .amp { color: var(--accent2); }
-  .sub { color: var(--muted); font-size: 18px; max-width: 760px; }
-  .sub b { color: var(--ink); }
-  .badges { margin-top: 18px; }
-  .badge {
-    display: inline-block; padding: 5px 12px; border-radius: 999px; margin: 0 8px 8px 0;
-    font-size: 12.5px; border: 1px solid var(--line); color: var(--muted); background: var(--panel);
+  nav .col { display: flex; align-items: center; justify-content: space-between; height: 52px; }
+  nav .brand { font-weight: 650; font-size: 14.5px; letter-spacing: -.01em; }
+  nav .brand span { color: var(--accent); }
+  nav a { color: var(--muted); text-decoration: none; font-size: 13.5px; margin-left: 22px; }
+  nav a:hover { color: var(--ink); }
+
+  /* ── hero ────────────────────────────────────────── */
+  header { padding: 96px 0 40px; text-align: center; }
+  .kicker {
+    display: inline-block; font-size: 12px; letter-spacing: .18em; text-transform: uppercase;
+    color: var(--accent); font-weight: 600; margin-bottom: 22px;
   }
-  .badge.g { color: var(--accent); border-color: rgba(88,214,168,.4); }
-  .btnrow { margin-top: 22px; display: flex; flex-wrap: wrap; gap: 12px; }
+  h1 {
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: clamp(34px, 5.4vw, 52px);
+    line-height: 1.1; letter-spacing: -.015em; font-weight: 600;
+    margin: 0 auto 18px; max-width: 800px;
+  }
+  h1 em { font-style: italic; color: var(--accent); }
+  .tagline {
+    font-size: 17.5px; color: var(--muted); max-width: 660px; margin: 0 auto 10px;
+  }
+  .tagline b { color: var(--ink); font-weight: 600; }
+  .author { margin-top: 26px; color: var(--faint); font-size: 14px; }
+  .author b { color: var(--ink); font-weight: 600; }
+
+  .btnrow { margin-top: 34px; display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
   .btn {
-    display: inline-block; padding: 10px 18px; border-radius: 10px; font-weight: 600;
-    text-decoration: none; font-size: 14.5px; border: 1px solid var(--line); color: var(--ink); background: var(--panel2);
-    transition: transform .06s ease, border-color .15s ease;
+    display: inline-block; padding: 11px 20px; border-radius: 999px;
+    font-size: 14px; font-weight: 600; text-decoration: none;
+    border: 1px solid var(--ink); color: var(--ink); background: transparent;
+    transition: all .15s ease;
   }
-  .btn:hover { border-color: var(--accent); transform: translateY(-1px); }
-  .btn.primary { background: var(--accent); color: #06130d; border-color: var(--accent); }
-  .btn.primary:hover { border-color: #8bf0c9; }
-  section { margin-top: 42px; }
-  h2 { font-size: 22px; margin: 0 0 12px; letter-spacing: -.005em; }
-  h2 .num { color: var(--accent2); font-size: 15px; margin-right: 8px; font-weight: 600; }
+  .btn:hover { transform: translateY(-1px); }
+  .btn.dark { background: var(--ink); color: #fff; }
+  .btn.dark:hover { background: #000; }
+  .btn.play { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .btn.play:hover { background: #096d50; }
+  .btn.ghost { border-color: var(--line); color: var(--muted); }
+  .btn.ghost:hover { border-color: var(--ink); color: var(--ink); }
+
+  /* ── sections ────────────────────────────────────── */
+  section { padding: 56px 0 8px; }
+  h2 {
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 26px; font-weight: 600; letter-spacing: -.01em; margin: 0 0 20px;
+  }
+  h2 .no { color: var(--faint); font-family: inherit; font-size: 15px; margin-right: 10px; vertical-align: 2px; }
   p, li { color: var(--muted); }
   p b, li b { color: var(--ink); }
-  .panel {
-    background: var(--panel); border: 1px solid var(--line); border-radius: 14px;
-    padding: 18px 20px; margin: 14px 0;
+  a { color: var(--accent); }
+
+  .abstract { font-size: 15.5px; color: var(--ink); }
+  .abstract b { color: var(--ink); }
+
+  .tldr {
+    background: var(--accent-soft); border-left: 3px solid var(--accent);
+    border-radius: 8px; padding: 14px 20px; margin: 22px 0;
+    font-size: 14.5px; color: var(--ink);
   }
-  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
-  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; }
-  .card h3 { margin: 0 0 6px; font-size: 15px; color: var(--ink); }
-  .card .big { font-size: 30px; font-weight: 700; color: var(--accent); line-height: 1.1; }
-  .card .big .x { font-size: 16px; color: var(--muted); font-weight: 400; }
-  .card p { margin: 6px 0 0; font-size: 13.5px; }
-  .clip { text-align: center; }
-  .clip img { max-width: 100%; border-radius: 12px; border: 1px solid var(--line); }
-  .cap { color: var(--muted); font-size: 13px; margin-top: 10px; }
-  .figrow { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
-  .fig { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 10px; text-align: center; }
-  .fig img { width: 100%; border-radius: 8px; }
-  .fig .lbl { font-size: 12.5px; color: var(--muted); margin-top: 8px; }
-  table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
-  th, td { border: 1px solid var(--line); padding: 7px 10px; text-align: left; }
-  th { background: var(--panel2); color: var(--ink); }
-  td { color: var(--muted); }
+  .tldr b { color: var(--accent); }
+
+  .figure { margin: 28px 0; }
+  .figure .frame {
+    background: var(--paper); border: 1px solid var(--line); border-radius: 12px;
+    padding: 10px; box-shadow: 0 1px 2px rgba(16,20,24,.04);
+  }
+  .figure img { width: 100%; border-radius: 8px; display: block; }
+  .figure video { width: 100%; border-radius: 8px; display: block; }
+  .figure .cap { font-size: 13px; color: var(--faint); margin-top: 12px; text-align: center; }
+  .figure .cap b { color: var(--muted); }
+
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin: 26px 0; }
+  .stat {
+    background: var(--paper); border: 1px solid var(--line); border-radius: 12px;
+    padding: 20px 22px; text-align: center;
+  }
+  .stat .n { font-family: Georgia, "Times New Roman", serif; font-size: 34px; font-weight: 700; color: var(--ink); line-height: 1.1; }
+  .stat .n em { color: var(--accent); font-style: normal; font-size: 20px; }
+  .stat .l { font-size: 13px; color: var(--muted); margin-top: 6px; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 14px; margin: 20px 0; }
+  th {
+    text-align: left; font-weight: 600; color: var(--ink);
+    border-bottom: 1.5px solid var(--ink); padding: 8px 10px; font-size: 13px;
+  }
+  td { border-bottom: 1px solid var(--line); padding: 8px 10px; color: var(--muted); }
   td.best { color: var(--accent); font-weight: 600; }
+  tr:hover td { background: #f5f7f8; }
+  .tcap { font-size: 13px; color: var(--faint); margin: 8px 0 24px; text-align: center; }
+
   code {
-    background: var(--panel2); border: 1px solid var(--line); border-radius: 6px;
-    padding: 2px 7px; font-size: 13px; color: var(--accent2);
+    background: #eef1f4; border-radius: 5px; padding: 2px 6px;
+    font-size: 13px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   }
   pre {
-    background: #0a0d12; border: 1px solid var(--line); border-radius: 12px;
-    padding: 16px 18px; overflow-x: auto; font-size: 13px; line-height: 1.5;
+    background: #101418; color: #d7dee7; border-radius: 12px; padding: 18px 22px;
+    overflow-x: auto; font-size: 13px; line-height: 1.55;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   }
-  pre code { background: none; border: none; padding: 0; color: #c9d6e8; }
-  footer { margin-top: 60px; border-top: 1px solid var(--line); padding-top: 18px; color: var(--muted); font-size: 13px; }
-  a { color: var(--accent2); }
+  pre code { background: none; color: inherit; padding: 0; }
+  pre .c { color: #6b7684; }
+  pre .k { color: #7ee0b8; }
+
+  ul.plain { padding-left: 18px; }
+  ul.plain li { margin: 6px 0; }
+
+  footer {
+    margin-top: 70px; padding: 34px 0 60px;
+    border-top: 1px solid var(--line); color: var(--faint); font-size: 13px;
+  }
+  footer .col { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 14px; }
+
+  /* keep tables and code blocks scrollable inside themselves on narrow screens */
+  @media (max-width: 720px) {
+    .tablewrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    table { min-width: 620px; }
+    pre { overflow-x: auto; }
+  }
 </style>
 </head>
 <body>
 
-<header>
-  <div class="wrap">
-    <div class="kicker">Research prototype · gradient-free · locally streaming</div>
-    <h1>Morphogenetic <span class="amp">Bi-Modal</span> Networks</h1>
-    <p class="sub">Weights aren't enough. Every neuron carries a 3D angle channel that multiplies the
-      weight channel: <b>weights say how strongly</b>, <b>angles say where</b>. The network learns a
-      physical law from noisy local observations with no global loss and no backpropagation, and its
-      shape self-organizes into a readable, mechanistic map of what it learned — <b>angles are the
-      computation; the shape is the interpretable spectrum.</b></p>
-    <div class="badges">
-      <span class="badge g">IIR spacetime weak form</span>
-      <span class="badge g">per-node streaming RLS</span>
-      <span class="badge g">nematic-consensus morphogenesis</span>
-      <span class="badge">no backprop</span>
-      <span class="badge">no global loss</span>
-      <span class="badge">real-data validated</span>
-      <span class="badge">playable demo</span>
+<nav>
+  <div class="col">
+    <div class="brand">Morphogenetic <span>Bi-Modal</span> Networks</div>
+    <div>
+      <a href="#demo">Demo</a>
+      <a href="#approach">Approach</a>
+      <a href="#results">Results</a>
+      <a href="#real">Real data</a>
+      <a href="#run">Run</a>
     </div>
+  </div>
+</nav>
+
+<header>
+  <div class="col">
+    <div class="kicker">Research · gradient-free · locally streaming</div>
+    <h1>Morphogenetic <em>Bi-Modal</em> Networks</h1>
+    <p class="tagline">Weights aren't enough. Every neuron carries a 3D angle channel that multiplies the
+      weight channel: <b>weights say how strongly, angles say where</b>. The network learns a physical law
+      from noisy local observations — no global loss, no backpropagation — and its shape self-organizes into
+      a readable, mechanistic map of what it learned.</p>
+    <p class="author"><b>Sehajr Singh</b> · research prototype</p>
     <div class="btnrow">
-      <a class="btn primary" href="game.html">▶ Play Flowrunner — the network learns a maze</a>
-      <a class="btn" href="papers/nmi_paper.pdf">Nature-style paper (PDF)</a>
-      <a class="btn" href="papers/ieee_paper.pdf">IEEE-style paper (PDF)</a>
-      <a class="btn" href="papers/manuscript.pdf">Full manuscript (PDF)</a>
+      <a class="btn play" href="#demo">▶ Watch it learn</a>
+      <a class="btn dark" href="papers/nmi_paper.pdf">Paper (Nature-style)</a>
+      <a class="btn dark" href="papers/ieee_paper.pdf">Paper (IEEE)</a>
+      <a class="btn ghost" href="https://github.com/sehajr-singhs/morphogenetic-bimodal-networks">Code</a>
     </div>
   </div>
 </header>
 
-<div class="wrap">
+<div class="col">
 
-  <section>
-    <h2><span class="num">01</span>The idea</h2>
-    <p>Classical neural networks connect neurons with scalar weights — a single, strength-only
-      channel. This architecture adds a second compute paradigm: each neuron carries a 3D structural
-      vector, and the effective connection between two neurons is a composition of two channels</p>
-    <div class="panel"><code>κ_ij = base weight × chemical factor(c̄) × geometric factor( v̂_i · v̂_j )</code></div>
-    <p>The weights are identified locally by a streaming, gradient-free learning rule
-      (recursive least squares over weak-form spacetime integrals). The angles rotate toward
-      nematic consensus — a deterministic contraction, gated by a slow chemical field — and the
-      emergent shape <b>steers the network's own computation</b>: information flows along the learned
-      geometry, and the shape is a spatially coherent, <i>readable</i> readout of the mechanism
-      (angle-field ↔ true-law correlation r = 0.64, vs r = 0.35 for the raw weights).</p>
+  <!-- ABSTRACT -->
+  <section id="abstract">
+    <h2><span class="no">01</span>Abstract</h2>
+    <p class="abstract">A spatially embedded, gradient-free neural operator learns through the physical
+      intersection of 3D geometry and dual chemical/electrical kinetics. Every update is strictly local and
+      streaming: derivatives are computed by integration by parts against a one-pole exponential window
+      (an IIR spacetime weak form), which suppresses finite-difference noise amplification by ≈5,500× at the
+      reference settings; a per-node recursive least-squares loop then identifies the local coupling law at
+      the observation-noise floor. A slow nematic-consensus layer rotates each neuron's 3D structural vector
+      toward the coupling-weighted mean of its neighbors — a deterministic contraction gated by a chemical
+      field — so the network's shape self-organizes into a focused corridor. The angle channel multiplies the
+      weight channel: the effective connection is <code>κ_ij = weight × chemical × (v̂_i · v̂_j)</code>, and the
+      emergent shape is a spatially coherent, <i>readable</i> readout of the mechanism. On a real 277-year
+      sunspot record the streaming weak form identifies the delay-space law at <b>481× lower holdout error
+      than finite-difference identification</b> (1.9e-5 vs 9.1e-3), flat under up to 50% added measurement
+      noise. In a playable maze (Flowrunner), the composed material — weights × chemistry × shape — routes
+      at exactly oracle-level steps from noisy observations alone, while each channel alone fails. No
+      fabricated numbers: every figure comes from committed result files.</p>
+    <div class="tldr"><b>TL;DR</b> — A neural network with two compute channels: scalar weights (strength)
+      and 3D angles (direction). It learns laws from noisy observations with no backprop, its shape grows
+      into a readable map of the law, and it plays a maze it never saw — <b>angles are the computation; the
+      shape is the interpretable spectrum.</b></div>
   </section>
 
-  <section>
-    <h2><span class="num">02</span>Watch it learn — the shape grows into the hidden law</h2>
-    <div class="panel clip">
-      <img src="game.gif" alt="Flowrunner: the morphogenetic network plays a maze — the shape grows along the hidden corridor and a token follows it to the goal">
-      <div class="cap">Flowrunner — an environment hides a high-conductivity corridor through a walled maze.
-        The network sees only noisy potential-field snapshots, identifies the local law, and its angle channel
-        self-organizes into a corridor (dashed: the hidden truth) that steers a token to the goal.
-        Open the <a href="game.html">full interactive page</a> with the results table and money-shot still.</div>
+  <!-- DEMO -->
+  <section id="demo">
+    <h2><span class="no">02</span>Watch it learn — the shape grows into the hidden law</h2>
+    <div class="figure">
+      <div class="frame">
+        <img src="game.gif" alt="Flowrunner: the morphogenetic network plays a maze — the shape grows along the hidden corridor and a token follows it to the goal">
+      </div>
+      <div class="cap"><b>Flowrunner.</b> An environment hides a high-conductivity corridor through a walled
+        maze, excited by chaotic sources along the path. The network sees only noisy potential-field
+        snapshots — never the layout. It identifies the local law with its streaming weak-form RLS, and its
+        angle channel self-organizes into a corridor (dashed: the hidden truth) that steers a token to the
+        goal. 26 frames, one episode; <a href="game.html">open the full page</a> for the results table and the
+        money-shot still.</div>
+    </div>
+    <div class="stats">
+      <div class="stat"><div class="n">100<em>%</em></div><div class="l">routing success of the composed material (weights × chemistry × shape), 4 episodes</div></div>
+      <div class="stat"><div class="n">14.0<em> = 14.0</em></div><div class="l">steps-to-goal vs the oracle that knows the maze</div></div>
+      <div class="stat"><div class="n">50<em>%</em> / 75<em>%</em></div><div class="l">success of shape-only and weights-only — each channel alone fails; they are complementary</div></div>
     </div>
   </section>
 
-  <section>
-    <h2><span class="num">03</span>Measured results (nothing extrapolated)</h2>
-    <div class="grid">
-      <div class="card">
-        <h3>Identification, real data</h3>
-        <div class="big">481<span class="x">×</span></div>
-        <p>holdout law-fit error advantage of the streaming weak form vs finite-difference identification on
-          an unseen 27-year window of the SILSO sunspot record (1.9e-5 vs 9.1e-3); 99.3% of target variance
-          explained, flat under up to 50% added measurement noise.</p>
-      </div>
-      <div class="card">
-        <h3>Locality, isolated</h3>
-        <div class="big">8.9<span class="x">×</span></div>
-        <p>held-out law-fit NMSE 0.038 ± 0.009 vs 0.339 for the best streaming-global RLS (15 seeds) —
-          per-node locality itself earns most of the advantage over global batch and finite-difference baselines.</p>
-      </div>
-      <div class="card">
-        <h3>Angles as computation</h3>
-        <div class="big">r = 0.64</div>
-        <p>the angle field reads back the true law vs r = 0.35 for the raw weights (better in 14/15 seeds);
-          learned geometry raises axial corridor transmission in 12/15 seeds; routing strictly requires the
-          learned geometric channel (ablation 6/8 → 0/8).</p>
-      </div>
-      <div class="card">
-        <h3>Playable routing</h3>
-        <div class="big">100<span class="x">%</span></div>
-        <p>the composed material (weights × chemistry × shape) routes a maze it never saw at exactly
-          oracle-level steps (14.0 vs 14.0) from noisy observations alone — while each channel alone fails
-          (shape-only 50%, weights-only 75%).</p>
-      </div>
-      <div class="card">
-        <h3>Memory</h3>
-        <div class="big">589<span class="x">×</span></div>
-        <p>less runtime memory than the frame-buffer batch estimator, and an identified-law state ~10× smaller
-          than a reservoir computer (126 KB vs 1.25 MB) at comparable or better long-horizon behavior.</p>
-      </div>
-      <div class="card">
-        <h3>Scale</h3>
-        <div class="big">49 → 225</div>
-        <p>the identification advantage persists across grid sizes at constant power density (12× → 9× vs
-          oracle), while self-organization coherence improves with scale (wind alignment 0.71 → 0.87).</p>
-      </div>
+  <!-- APPROACH -->
+  <section id="approach">
+    <h2><span class="no">03</span>Approach</h2>
+    <p>Each neuron carries three state variables — activation <code>u_i</code>, a slow chemical state
+      <code>c_i</code>, and a 3D structural vector <code>v_i</code>. The weight channel is identified
+      locally: the network maintains running, exponentially-decayed spacetime integrals (the IIR weak form)
+      and a per-node recursive least-squares loop over a polynomial basis, so the identified law contracts
+      to the true local physics. The angle channel is a deterministic nematic consensus: each vector rotates
+      toward the coupling-weighted mean direction of its neighbors, gated by the chemical field so geometry
+      grows only on the chemically-potentiated corridor. The two channels meet in the effective connection</p>
+    <div class="figure">
+      <div class="frame"><img src="figs/fig1_architecture.png" alt="Architecture: fast electrical continuum, slow chemical continuum, IIR weak-form identifier, morphogenesis layer"></div>
+      <div class="cap"><b>Figure 1 —</b> architecture. Fast electrical continuum (implicit graph diffusion),
+        slow chemical continuum (reaction–diffusion–advection), IIR spacetime weak form, per-node streaming
+        RLS, and nematic-consensus morphogenesis.</div>
     </div>
-
-    <h2 style="margin-top:30px">Forecasting the real sunspot record (holdout 1991–2023, NMSE by horizon)</h2>
-    <div class="panel">
-      <table>
-        <tr><th>horizon</th><th>weak form (this work)</th><th>FD streaming</th><th>batch weak SINDy</th><th>batch FD SINDy</th><th>AR(24)</th><th>ESN</th><th>persistence</th></tr>
-        <tr><td>1 mo</td><td class="best">0.116</td><td>0.260</td><td>0.117</td><td>0.187</td><td>0.095</td><td>0.096</td><td>0.119</td></tr>
-        <tr><td>6 mo</td><td>0.197</td><td>0.627</td><td>0.204</td><td>0.309</td><td class="best">0.135</td><td>0.133</td><td>0.193</td></tr>
-        <tr><td>12 mo</td><td>0.296</td><td>1.310</td><td>0.310</td><td>0.527</td><td>0.177</td><td class="best">0.166</td><td>0.284</td></tr>
-        <tr><td>24 mo</td><td>0.607</td><td>5.449</td><td>0.628</td><td>1.561</td><td>0.282</td><td class="best">0.251</td><td>0.578</td></tr>
-      </table>
-      <div class="cap">Honest boundary, stated plainly: the weak form is a <i>derivative law</i> — it beats every
-        finite-difference identification at every horizon and beats persistence at 1 month, but AR/ESN, which fit the
-        level directly, lead at long horizons. Numbers from <code>real_benchmark.json</code>.</div>
+    <div class="figure">
+      <div class="frame"><img src="figs/fig2_learning_curves.png" alt="Learning curves: streaming weak form vs streaming-global RLS vs batch oracle vs finite-difference RLS"></div>
+      <div class="cap"><b>Figure 2 —</b> law-fit NMSE vs time on the reference task (15 seeds, 5% noise,
+        regime-switching drift): per-node locality itself earns most of the advantage over the best
+        streaming-global RLS (0.038 ± 0.009 vs 0.339).</div>
+    </div>
+    <div class="figure">
+      <div class="frame"><img src="figs/fig3_readback.png" alt="The angle field reads back the true law better than the raw weights"></div>
+      <div class="cap"><b>Figure 3 —</b> the shape is the interpretable spectrum: the angle field reads back
+        the true law at r = 0.64 vs r = 0.35 for the raw weights (better in 14/15 seeds) — the weights are
+        multicollinear noise per edge, while the shape is their spatially coherent aggregate.</div>
     </div>
   </section>
 
-  <section>
-    <h2><span class="num">04</span>Papers</h2>
-    <div class="grid">
-      <div class="card">
-        <h3>Nature Machine Intelligence style</h3>
-        <p>Single-column, journal-formatted submission draft with Methods and Data Availability. The ambition:
-          a demonstrated physical-computing architecture. Current honest status: strong preprint / workshop
-          submission; one hardware-in-the-loop demonstration away from a defensible NMI submission.</p>
-        <p style="margin-top:10px"><a class="btn" href="papers/nmi_paper.pdf">Download NMI PDF</a></p>
-      </div>
-      <div class="card">
-        <h3>IEEE style</h3>
-        <p>Two-column conference-formatted draft, submittable today to a solid workshop/short-paper venue on
-          local learning or physical computing — a legitimate route to peer review and citations.</p>
-        <p style="margin-top:10px"><a class="btn" href="papers/ieee_paper.pdf">Download IEEE PDF</a></p>
-      </div>
-      <div class="card">
-        <h3>Full manuscript</h3>
-        <p>The complete working paper: theory of the weak form, controlled baselines, full ablation, scaling,
-          real-data validation, eight documented failure modes, and references.</p>
-        <p style="margin-top:10px"><a class="btn" href="papers/manuscript.pdf">Download manuscript</a></p>
-      </div>
+  <!-- RESULTS -->
+  <section id="results">
+    <h2><span class="no">04</span>Results</h2>
+    <div class="stats">
+      <div class="stat"><div class="n">8.9<em>×</em></div><div class="l">held-out law-fit NMSE advantage over the best streaming-global RLS (15 seeds, 5% noise)</div></div>
+      <div class="stat"><div class="n">589<em>×</em></div><div class="l">less runtime memory than the frame-buffer batch estimator</div></div>
+      <div class="stat"><div class="n">r = 0.64</div><div class="l">angle-field ↔ true-law correlation vs 0.35 for raw weights; learned geometry raises corridor transmission in 12/15 seeds</div></div>
+      <div class="stat"><div class="n">6/8 → 0/8</div><div class="l">ablation: routing strictly requires the learned geometric channel (positive-transmission seeds with angles on → off)</div></div>
+    </div>
+    <div class="figure">
+      <div class="frame"><img src="figs/fig4_ablation.png" alt="Ablation: identification survives every ablation; routing strictly requires the learned geometric channel"></div>
+      <div class="cap"><b>Figure 4 —</b> ablation (8 seeds × 6 variants). Identification survives every
+        ablation (NMSE flat at ~0.036); routing collapses without the learned geometric channel; the
+        chemical gate is what makes the shape specific.</div>
+    </div>
+    <div class="figure">
+      <div class="frame"><img src="figs/fig5_scaling.png" alt="Scaling: identification advantage persists from 49 to 225 nodes; self-organization improves with scale"></div>
+      <div class="cap"><b>Figure 5 —</b> scaling (5 seeds × 3 grid sizes, constant power density). The
+        identification advantage persists from 49 → 225 nodes (12× → 9× vs oracle) while self-organization
+        coherence improves (wind alignment 0.71 → 0.87).</div>
+    </div>
+    <div class="figure">
+      <div class="frame"><img src="figs/fig6_routing.png" alt="Learned geometry routes the flow along the corridor"></div>
+      <div class="cap"><b>Figure 6 —</b> geometry routes the physics: steady-state flux follows the learned
+        geometry, and axial corridor transmission rises over the identical network with unlearned angles.</div>
     </div>
   </section>
 
-  <section>
-    <h2><span class="num">05</span>Figures</h2>
-    <div class="figrow">
-      <div class="fig"><img src="figs/fig1_architecture.png" alt="architecture"><div class="lbl">Fig 1 — architecture</div></div>
-      <div class="fig"><img src="figs/fig2_learning_curves.png" alt="learning curves"><div class="lbl">Fig 2 — learning curves</div></div>
-      <div class="fig"><img src="figs/fig3_readback.png" alt="shape readback"><div class="lbl">Fig 3 — the shape reads back the law</div></div>
-      <div class="fig"><img src="figs/fig4_ablation.png" alt="ablation"><div class="lbl">Fig 4 — ablation</div></div>
-      <div class="fig"><img src="figs/fig5_scaling.png" alt="scaling"><div class="lbl">Fig 5 — scaling</div></div>
-      <div class="fig"><img src="figs/fig6_routing.png" alt="routing"><div class="lbl">Fig 6 — geometry routes the flow</div></div>
-      <div class="fig"><img src="figs/fig7_realdat.png" alt="real data"><div class="lbl">Fig 7 — real-data validation</div></div>
+  <!-- REAL DATA -->
+  <section id="real">
+    <h2><span class="no">05</span>Real data — the 277-year sunspot record</h2>
+    <p>The identification layer, unmodified, runs on the SILSO monthly sunspot series — 3,331 real
+      observations, 1749–2026 — delay-embedded as a ring of 24 lag nodes. The law is frozen after training
+      and evaluated on an unseen 27-year window (1991–2023). Hyperparameters are tuned only on a validation
+      window; nothing downstream is retrained.</p>
+    <div class="figure">
+      <div class="frame"><img src="figs/fig7_realdat.png" alt="Real-data validation: holdout law-fit across unseen decades, noise robustness, forecasts vs horizon"></div>
+      <div class="cap"><b>Figure 7 —</b> (a) the record with train/val/test split; (b) holdout law-fit NMSE
+        vs added measurement noise — the weak form stays flat at ~1.9e-5 from 0 → 50% noise while
+        finite-difference degrades; (c) forecast NMSE vs horizon.</div>
     </div>
+    <div class="stats">
+      <div class="stat"><div class="n">481<em>×</em></div><div class="l">holdout law-fit error advantage over FD streaming on unseen decades (1.9e-5 vs 9.1e-3); 99.3% of target variance explained</div></div>
+      <div class="stat"><div class="n">3.3<em>×</em></div><div class="l">better than its own global batch version — exponential forgetting adapts to the recent regime</div></div>
+      <div class="stat"><div class="n">126<em> KB</em></div><div class="l">identified-law state vs 1.25 MB reservoir at comparable or better long-horizon behavior</div></div>
+    </div>
+    <p><b>Forecast NMSE by horizon</b> (held-out 1991–2023; the honest boundary: the weak form is a derivative
+      law — it beats every finite-difference identification at every horizon and persistence at 1 month, while
+      AR/ESN, which fit the level directly, lead at long horizons):</p>
+    <div class="tablewrap">
+    <table>
+      <tr><th>horizon</th><th>weak form (this work)</th><th>FD streaming</th><th>batch weak</th><th>batch FD</th><th>AR(24)</th><th>ESN</th><th>persistence</th></tr>
+      <tr><td>1 mo</td><td class="best">0.116</td><td>0.260</td><td>0.117</td><td>0.187</td><td>0.095</td><td>0.096</td><td>0.119</td></tr>
+      <tr><td>6 mo</td><td>0.197</td><td>0.627</td><td>0.204</td><td>0.309</td><td class="best">0.135</td><td>0.133</td><td>0.193</td></tr>
+      <tr><td>12 mo</td><td>0.296</td><td>1.310</td><td>0.310</td><td>0.527</td><td>0.177</td><td class="best">0.166</td><td>0.284</td></tr>
+      <tr><td>24 mo</td><td>0.607</td><td>5.449</td><td>0.628</td><td>1.561</td><td>0.282</td><td class="best">0.251</td><td>0.578</td></tr>
+    </table>
+    </div>
+    <div class="tcap">Numbers from <code>real_benchmark.json</code> — no hand-entered values.</div>
   </section>
 
-  <section>
-    <h2><span class="num">06</span>Run it yourself</h2>
-    <p>Python 3.9+; only <code>numpy</code>, <code>matplotlib</code>, and (for the game clip) <code>Pillow</code> are required.</p>
-<pre><code>pip install -r requirements.txt
-python run_experiments.py --task sweep     --seeds 15 --T 4000 --out results.json
-python run_experiments.py --task ablation --seeds 8  --T 4000 --out ablation.json
-python run_experiments.py --task scale    --seeds 5  --T 4000 --sizes 7x7,11x11,15x15 --out scaling.json
-python real_benchmark.py --out real_benchmark.json     # real sunspot record (SILSO)
-python flowgame.py --episodes 4 --out game             # the maze game + animated clip
-python make_figures.py
-python test_biomaterial_net.py                         # 10 sanity tests</code></pre>
-    <p style="margin-top:12px">All numbers in the papers are produced by these scripts from the committed result
-      files (<code>results.json</code>, <code>ablation.json</code>, <code>scaling.json</code>,
-      <code>real_benchmark.json</code>) — nothing is hand-entered.</p>
+  <!-- RUN -->
+  <section id="run">
+    <h2><span class="no">06</span>Run it yourself</h2>
+    <p>Python 3.9+; only <code>numpy</code>, <code>matplotlib</code>, and (for the game clip) <code>Pillow</code>
+      are required. Every paper number is produced by these scripts from the committed result files.</p>
+<pre><code><span class="k">pip install</span> -r requirements.txt
+<span class="k">python</span> run_experiments.py --task sweep     --seeds 15 --T 4000 --out results.json
+<span class="k">python</span> run_experiments.py --task ablation --seeds 8  --T 4000 --out ablation.json
+<span class="k">python</span> run_experiments.py --task scale    --seeds 5  --T 4000 --sizes 7x7,11x11,15x15 --out scaling.json
+<span class="k">python</span> real_benchmark.py --out real_benchmark.json   <span class="c"># real sunspot record (SILSO)</span>
+<span class="k">python</span> flowgame.py --episodes 4 --out game             <span class="c"># the maze game + animated clip</span>
+<span class="k">python</span> make_figures.py
+<span class="k">python</span> test_biomaterial_net.py                         <span class="c"># 10 sanity tests</span></code></pre>
+    <p style="margin-top:14px">See the <a href="https://github.com/sehajr-singhs/morphogenetic-bimodal-networks">repository</a>
+      for the full README, methods, baselines, and eight documented failure modes. LaTeX sources for both
+      papers (<code>nmi_paper.tex</code>, <code>ieee_paper.tex</code>) are included and regenerate with
+      <code>pdflatex</code>.</p>
   </section>
 
   <footer>
-    Research prototype. Code: MIT licensed. SILSO sunspot data: public domain
-    (SILSO, Royal Observatory of Belgium — <a href="https://www.sidc.be/silso/">sidc.be/silso</a>).
-    Read the full README in the repository for methods, baselines, and documented failure modes.
+    <div class="col">
+      <div>Research prototype · code MIT licensed · papers in <a href="papers/">papers/</a></div>
+      <div>Sunspot data: <a href="https://www.sidc.be/silso/">SILSO, Royal Observatory of Belgium</a> (public domain)</div>
+    </div>
   </footer>
 
 </div>
