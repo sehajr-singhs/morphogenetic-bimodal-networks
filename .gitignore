@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# LaTeX artifacts (sources are committed, builds are not)
+*.aux
+*.log
+*.out
+*.toc
+*.bbl
+*.blg
+*.fls
+*.fdb_latexmk
+
+# Marginal-render QA images
+pg-*.png
+pgv-*.png
+pgw-*.png
+xcheck/
+mcheck/
+pg*.png
+
+# OS
+.DS_Store
+Thumbs.db

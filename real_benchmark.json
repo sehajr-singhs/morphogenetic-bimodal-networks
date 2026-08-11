@@ -1,0 +1,107 @@
+{
+  "meta": {
+    "d": 24,
+    "M": 12,
+    "tau": 1,
+    "lam": 0.15,
+    "ridge": 0.1,
+    "lam_rls": 0.005,
+    "p_ar": 24,
+    "esn_ridge": 0.01,
+    "n_train": 2331,
+    "n_val": 333,
+    "n_test": 666,
+    "source": "https://www.sidc.be/silso/INFO/snmtotcsv.php?nol_header=1"
+  },
+  "per_horizon": {
+    "h1": {
+      "weak": 0.1156,
+      "fd_streaming": 0.2602,
+      "batch_weak": 0.1166,
+      "batch_fd": 0.1869,
+      "ar": 0.0946,
+      "esn": {
+        "mean": 0.0963,
+        "std": 0.0019
+      },
+      "persistence": 0.1187
+    },
+    "h6": {
+      "weak": 0.1972,
+      "fd_streaming": 0.6268,
+      "batch_weak": 0.2041,
+      "batch_fd": 0.3087,
+      "ar": 0.135,
+      "esn": {
+        "mean": 0.1333,
+        "std": 0.0061
+      },
+      "persistence": 0.1928
+    },
+    "h12": {
+      "weak": 0.296,
+      "fd_streaming": 1.3095,
+      "batch_weak": 0.3102,
+      "batch_fd": 0.5269,
+      "ar": 0.1773,
+      "esn": {
+        "mean": 0.1659,
+        "std": 0.0098
+      },
+      "persistence": 0.2836
+    },
+    "h24": {
+      "weak": 0.6072,
+      "fd_streaming": 5.4485,
+      "batch_weak": 0.6284,
+      "batch_fd": 1.5608,
+      "ar": 0.2822,
+      "esn": {
+        "mean": 0.2505,
+        "std": 0.0207
+      },
+      "persistence": 0.5783
+    }
+  },
+  "identification": {
+    "sigma0.0": {
+      "weak_streaming": 1.9e-05,
+      "fd_streaming": 0.00915,
+      "batch_weak": 6.3e-05,
+      "batch_fd": 0.010821,
+      "weak_in_sample_r2": 0.989748
+    },
+    "sigma0.05": {
+      "weak_streaming": 1.9e-05,
+      "fd_streaming": 0.009118,
+      "batch_weak": 6.2e-05,
+      "batch_fd": 0.010737,
+      "weak_in_sample_r2": 0.989962
+    },
+    "sigma0.2": {
+      "weak_streaming": 1.8e-05,
+      "fd_streaming": 0.009484,
+      "batch_weak": 4.6e-05,
+      "batch_fd": 0.010842,
+      "weak_in_sample_r2": 0.991628
+    },
+    "sigma0.5": {
+      "weak_streaming": 1.8e-05,
+      "fd_streaming": 0.010643,
+      "batch_weak": 2.3e-05,
+      "batch_fd": 0.011346,
+      "weak_in_sample_r2": 0.995257
+    }
+  },
+  "weak": {
+    "law_fit_r2": 0.9897480306584812,
+    "holdout_law_fit": 1.9e-05,
+    "mem_kb": 126.56
+  },
+  "esn": {
+    "mem_kb": 1250.0
+  },
+  "ar": {
+    "mem_kb": 0.188
+  }
+}
