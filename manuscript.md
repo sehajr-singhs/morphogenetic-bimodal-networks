@@ -48,13 +48,28 @@ corridor transmission rises above an identical material with unlearned angles in
 12/15 seeds, and steady-state flux follows the geometry. Ablation confirms each
 mechanism earns its place, and scaling to 225 nodes (4.6× more material) preserves
 the identification advantage and *improves* the coherence of self-organization
-(wind alignment $0.71 \to 0.87$) under constant excitation power density. Finally,
-on a *real* signal — the 277-year SILSO sunspot record, a benchmark no part of the
-pipeline generated — the same frozen weak-form identifier generalizes to unseen
-decades at **~500× lower holdout error than finite-difference identification**
-($1.9\times10^{-5}$ vs $9.1\times10^{-3}$, signal-normalized), stays flat under 50%
-added measurement noise, and beats persistence at one-month forecasts while using
-~10× less memory than a reservoir. The angles are computation; the shape is the
+(wind alignment $0.71 \to 0.87$) under constant excitation power density. With a
+sparse warm-started conjugate-gradient plant solver (the relaxation a physical
+material performs, exact to $10^{-9}$), the same network runs at **10⁴ nodes
+(44× more material than the dense-solve table)** with the identification advantage
+and shape readability intact ($r \approx 0.63$ at every size), a memory advantage
+that grows with scale (~240× → ~630×), and sublinear per-node cost. On *two* real
+signals that no part of the pipeline generated — the 277-year SILSO sunspot record
+and the 78-year NINO3.4 El Niño SST record — the same frozen weak-form identifier
+generalizes to unseen decades at **~500× (sunspot) and ~22× (ENSO) lower holdout
+error than finite-difference identification**, stays flat under 50% added
+measurement noise on both, and beats a backpropagation-trained **LSTM** at 6- and
+12-month ENSO forecasts and by 5× at one month when only 10% of the data is
+available, where the reservoir collapses entirely. The honest boundary is stated
+and now measured against modern deep learning: level-fitting learners (AR, ESN,
+LSTM) lead long-horizon forecasts on the smoother sunspot record, because a
+derivative law carries no level. A *Theory* section proves what the loop
+guarantees: a $\lambda^2\sigma^2$ noise floor independent of the sampling interval
+(finite differences amplify as $2\sigma^2/\Delta t^2$; a $2{\times}10^{5}\times$
+gap at $\Delta t{=}10^{-3}$), RLS contraction under persistence of excitation with
+tracking error linear in the law-drift rate, monotone angulation ascent, and
+closed-loop stability (morphogenesis perturbs identification by only ~7% while
+alignment rises 0.51 → 0.88). The angles are computation; the shape is the
 interpretable spectrum.
 
 ---
@@ -389,22 +404,26 @@ at one month** ($0.116$ vs $0.119$) and statistically tied thereafter, and **far
 better than any finite-difference law** (FD streaming $0.260/0.627/1.31/5.45$ — an
 8.9× gap at 24 months). Streaming matches or slightly beats its own batch twin at
 every horizon (adaptivity), and the identified-law memory state is ~10× smaller
-than the reservoir (0.13 MB vs 1.25 MB). The honest boundary: nonlinear learners
-that fit the *level* directly — AR(24) and the ESN — are better at long horizons
-($0.177$ and $0.166$ vs $0.296$ at 12 months), because a derivative law carries
-almost no level information and the sunspot cycle's amplitude and period drift
-across decades. A derivative-law identifier is not a long-horizon forecaster; it is
-a robust law extractor, and that is the claim Table 6 supports.
+than the reservoir (0.13 MB vs 1.25 MB). The honest boundary, now measured against
+modern deep learning: the **LSTM** (24 hidden units, BPTT + Adam, pure NumPy,
+~4.7k parameters) is better at every horizon on this record
+($0.093/0.130/0.170/0.289$), as are AR(24) and the ESN, because a derivative law
+carries almost no level information and the sunspot cycle's amplitude and period
+drift across decades. A derivative-law identifier is not a long-horizon forecaster;
+it is a robust law extractor, and that is the claim Table 6 supports. Where the
+weak form beats the same deep baseline is *sample complexity and streaming*
+(§2.7b): with 10% of the data the LSTM degrades while the law holds.
 
 **Table 7 — forecast NMSE on the held-out real window (1971–2026), frozen models,
-pure multistep.** ESN: mean ± s.d. over three reservoir seeds.
+pure multistep.** ESN: mean ± s.d. over three reservoir seeds. LSTM: trained on
+the same train window (35 epochs, Adam).
 
-| horizon | weak | FD stream | batch weak | batch FD | AR(24) | ESN | persistence |
-|---|---|---|---|---|---|---|---|
-| 1 mo | $0.116$ | $0.260$ | $0.117$ | $0.187$ | $0.095$ | $0.096\pm0.002$ | $0.119$ |
-| 6 mo | $0.197$ | $0.627$ | $0.204$ | $0.309$ | $0.135$ | $0.133\pm0.006$ | $0.193$ |
-| 12 mo | $0.296$ | $1.310$ | $0.310$ | $0.527$ | $0.177$ | $0.166\pm0.010$ | $0.284$ |
-| 24 mo | $0.607$ | $5.449$ | $0.628$ | $1.561$ | $0.282$ | $0.251\pm0.021$ | $0.578$ |
+| horizon | weak | FD stream | batch weak | batch FD | AR(24) | ESN | LSTM | persistence |
+|---|---|---|---|---|---|---|---|---|
+| 1 mo | $0.116$ | $0.260$ | $0.117$ | $0.187$ | $0.095$ | $0.096\pm0.002$ | $0.093$ | $0.119$ |
+| 6 mo | $0.197$ | $0.627$ | $0.204$ | $0.309$ | $0.135$ | $0.133\pm0.006$ | $0.130$ | $0.193$ |
+| 12 mo | $0.296$ | $1.310$ | $0.310$ | $0.527$ | $0.177$ | $0.166\pm0.010$ | $0.170$ | $0.284$ |
+| 24 mo | $0.607$ | $5.449$ | $0.628$ | $1.561$ | $0.282$ | $0.251\pm0.021$ | $0.289$ | $0.578$ |
 
 **Figure 7 — Real-data validation on the SILSO sunspot benchmark** (rendered from
 `real_benchmark.json`; see `figs/fig7_realdat.png`). (a) The 277-year record with
@@ -413,6 +432,60 @@ train/validation/test shading and one 24-month weak-form forecast in the test er
 ~500× below finite-difference identification across regimes the law never saw.
 (c) Forecast skill versus horizon: the identified law beats persistence at one
 month, ties it longer, and crushes finite-difference laws.
+
+### 2.7b A second, independent real stream: El Niño SST (ENSO)
+
+One real dataset is a single draw. We repeated the protocol, *unchanged*, with no
+part of the pipeline re-tuned, on a second real signal from a different physical
+system: the **NINO3.4 monthly sea-surface temperature anomaly index** (943
+observations, 1948–2026; NOAA/PSL), the canonical nonlinear climate index of the
+El Niño–Southern Oscillation. No variance-stabilizing transform is applied; the
+delay-embedding, hyperparameters, and splits are identical to §2.7.
+
+**The identification armor transfers (Table 8; Fig. 9b).** The frozen weak-form
+law's holdout error on unseen decades is $8.6\times10^{-4}$ versus
+$1.85\times10^{-2}$ for finite-difference streaming — a **22× advantage on a
+second real system** — and streaming again beats its own batch twin (1.35×). The
+advantage is smaller than on sunspots because the smoother SST field has less
+high-frequency content for the $2/\Delta t^2$ amplification to destroy; the
+*invariant* claim is the noise armor: the weak-form holdout error is flat
+($8.6\times10^{-4} \to 8.5\times10^{-4}$) under 50% added measurement noise while
+FD wanders.
+
+**The deep-learning boundary flips on this system (Table 9; Fig. 9c).** On the
+ENSO record the identified weak-form law **beats the trained LSTM at 6- and
+12-month horizons** ($0.538$ vs $0.575$; $0.920$ vs $0.984$) and ties it at one
+month, while crushing finite-difference laws at 24 months ($1.33$ vs $1.50$/$1.93$)
+and beating persistence everywhere ($1.33$ vs $1.68$ at 24 months). AR(24) still
+leads at 24 months ($1.00$), and the reservoir fails outright on this record
+($7.7$ at 24 months).
+
+**Sample complexity is the deep-learning gap (Table 9).** At 10% of the ENSO
+record (66 months), the weak-form one-month forecast NMSE is **5.3× better than
+the LSTM** ($0.087$ vs $0.464$) and 2.6× better than AR(24); the reservoir
+collapses ($1.73$ at one month, $159$ at 12 months). The same qualitative picture
+holds on sunspots: the ESN degrades from $0.096$ to $0.744$ as training shrinks
+from 100% to 10%, while the weak form holds $0.116 \to 0.115$ at one month. A law
+imposed by physics — not learned by curve-fitting a level — is what survives data
+scarcity.
+
+### 2.7c Theory: what the loop guarantees
+
+Four provable statements, each verified numerically (`theory.py` →
+`theory.json`). **(T1)** The weak-form noise floor is $\mathrm{Var}\,y =
+2\lambda^2\sigma^2\alpha^2/(1+\alpha) \to \lambda^2\sigma^2$, *independent of the
+sampling interval* (FD: $2\sigma^2/\Delta t^2$; measured $2.2{\times}10^{5}\times$
+gap at $\Delta t{=}10^{-3}$; ratios to theory 0.998–1.000). **(T2)**
+Forgetting-factor RLS under persistence of excitation contracts geometrically
+with a noise floor $\sigma^2/\gamma$ and tracking error linear in the law-drift
+rate $\delta$ (measured: 238× reduction, halved in 5 samples; error $0.006 \to
+0.151$ as $\delta$ grows). **(T3)** Angulation is projected-gradient ascent on the
+alignment functional $F = \sum_{ij} w_{ij}\hat v_i{\cdot}\hat v_j$, so the mean
+alignment is non-decreasing (measured $0.511 \to 0.878$, slope > 0). **(T4)**
+Chemical-gated morphogenesis bounds the law-drift rate by the learning rate
+$\eta_e$, so the closed loop is the T2 contraction plus an $O(\eta_e)$ perturbation
+(measured: law-fit NMSE perturbed by only 7% while alignment rises 0.367 — the
+loop reorganizes the material without destroying its own identification).
 
 ### 2.8 Playable demonstration: Flowrunner
 

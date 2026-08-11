@@ -1,5 +1,6 @@
 {
   "meta": {
+    "dataset": "sunspot",
     "d": 24,
     "M": 12,
     "tau": 1,
@@ -8,6 +9,7 @@
     "lam_rls": 0.005,
     "p_ar": 24,
     "esn_ridge": 0.01,
+    "n": 3331,
     "n_train": 2331,
     "n_val": 333,
     "n_test": 666,
@@ -24,6 +26,7 @@
         "mean": 0.0963,
         "std": 0.0019
       },
+      "lstm": 0.0928,
       "persistence": 0.1187
     },
     "h6": {
@@ -36,6 +39,7 @@
         "mean": 0.1333,
         "std": 0.0061
       },
+      "lstm": 0.1302,
       "persistence": 0.1928
     },
     "h12": {
@@ -48,6 +52,7 @@
         "mean": 0.1659,
         "std": 0.0098
       },
+      "lstm": 0.1696,
       "persistence": 0.2836
     },
     "h24": {
@@ -60,6 +65,7 @@
         "mean": 0.2505,
         "std": 0.0207
       },
+      "lstm": 0.2887,
       "persistence": 0.5783
     }
   },
@@ -93,6 +99,78 @@
       "weak_in_sample_r2": 0.995257
     }
   },
+  "low_data": {
+    "frac0.1": {
+      "h1": {
+        "weak": 0.1149,
+        "lstm": 0.1071,
+        "ar": 0.1086,
+        "esn": 0.7435,
+        "persistence": 0.1187
+      },
+      "h12": {
+        "weak": 0.2894,
+        "lstm": 0.3551,
+        "ar": 0.198,
+        "esn": 0.6153,
+        "persistence": 0.2836
+      }
+    },
+    "frac0.2": {
+      "h1": {
+        "weak": 0.1201,
+        "lstm": 0.1062,
+        "ar": 0.1014,
+        "esn": 0.3841,
+        "persistence": 0.1187
+      },
+      "h12": {
+        "weak": 0.3662,
+        "lstm": 0.2503,
+        "ar": 0.1898,
+        "esn": 0.435,
+        "persistence": 0.2836
+      }
+    },
+    "frac0.4": {
+      "h1": {
+        "weak": 0.1143,
+        "lstm": 0.1032,
+        "ar": 0.0956,
+        "esn": 0.1454,
+        "persistence": 0.1187
+      },
+      "h12": {
+        "weak": 0.2676,
+        "lstm": 0.2985,
+        "ar": 0.1814,
+        "esn": 0.2932,
+        "persistence": 0.2836
+      }
+    }
+  },
+  "online": {
+    "h1": {
+      "weak_online": 0.118,
+      "weak_frozen": 0.1156,
+      "lstm": 0.0928
+    },
+    "h6": {
+      "weak_online": 0.2241,
+      "weak_frozen": 0.1972,
+      "lstm": 0.1302
+    },
+    "h12": {
+      "weak_online": 0.3515,
+      "weak_frozen": 0.296,
+      "lstm": 0.1696
+    },
+    "h24": {
+      "weak_online": 0.7069,
+      "weak_frozen": 0.6072,
+      "lstm": 0.2887
+    }
+  },
   "weak": {
     "law_fit_r2": 0.9897480306584812,
     "holdout_law_fit": 1.9e-05,
@@ -103,5 +181,8 @@
   },
   "ar": {
     "mem_kb": 0.188
+  },
+  "lstm": {
+    "mem_kb": 36.945
   }
 }

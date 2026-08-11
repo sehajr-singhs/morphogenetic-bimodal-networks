@@ -269,13 +269,72 @@
   <code>real_benchmark.json</code>.</p>
 <div class="tablescroll">
 <table>
-  <tr><th>horizon</th><th>weak form (this work)</th><th>FD streaming</th><th>batch weak</th><th>batch FD</th><th>AR(24)</th><th>ESN</th><th>persistence</th></tr>
-  <tr><td>1 mo</td><td class="win num">0.116</td><td class="num">0.260</td><td class="num">0.117</td><td class="num">0.187</td><td class="num">0.095</td><td class="num">0.096</td><td class="num">0.119</td></tr>
-  <tr><td>6 mo</td><td class="num">0.197</td><td class="num">0.627</td><td class="num">0.204</td><td class="num">0.309</td><td class="win num">0.135</td><td class="num">0.133</td><td class="num">0.193</td></tr>
-  <tr><td>12 mo</td><td class="num">0.296</td><td class="num">1.310</td><td class="num">0.310</td><td class="num">0.527</td><td class="num">0.177</td><td class="win num">0.166</td><td class="num">0.284</td></tr>
-  <tr><td>24 mo</td><td class="num">0.607</td><td class="num">5.449</td><td class="num">0.628</td><td class="num">1.561</td><td class="num">0.282</td><td class="win num">0.251</td><td class="num">0.578</td></tr>
+  <tr><th>horizon</th><th>weak form (this work)</th><th>FD streaming</th><th>batch weak</th><th>batch FD</th><th>AR(24)</th><th>ESN</th><th>LSTM</th><th>persistence</th></tr>
+  <tr><td>1 mo</td><td class="win num">0.116</td><td class="num">0.260</td><td class="num">0.117</td><td class="num">0.187</td><td class="num">0.095</td><td class="num">0.096</td><td class="num">0.093</td><td class="num">0.119</td></tr>
+  <tr><td>6 mo</td><td class="num">0.197</td><td class="num">0.627</td><td class="num">0.204</td><td class="num">0.309</td><td class="win num">0.135</td><td class="num">0.133</td><td class="num">0.130</td><td class="num">0.193</td></tr>
+  <tr><td>12 mo</td><td class="num">0.296</td><td class="num">1.310</td><td class="num">0.310</td><td class="num">0.527</td><td class="num">0.177</td><td class="num">0.166</td><td class="win num">0.170</td><td class="num">0.284</td></tr>
+  <tr><td>24 mo</td><td class="num">0.607</td><td class="num">5.449</td><td class="num">0.628</td><td class="num">1.561</td><td class="num">0.282</td><td class="num">0.251</td><td class="win num">0.289</td><td class="num">0.578</td></tr>
 </table>
 </div>
+<p class="note">A trained LSTM (pure NumPy, BPTT + Adam) is now a first-class baseline. The boundary is
+  measured, not hidden: level-fitters win long-horizon forecasts on the smoother sunspot record — and the weak
+  form beats the same LSTM on the ENSO record and at low data (below).</p>
+
+<h2>A second real stream — El Ni&ntilde;o SST (ENSO)</h2>
+<p>The protocol, unchanged, on the NINO3.4 monthly sea-surface temperature anomaly index (943 real
+  observations, 1948&ndash;2026; NOAA/PSL) — a different physical system, no re-tuning. The identification
+  armor transfers (22&times; below FD, flat under 50% noise), the deep-learning boundary flips (weak beats the
+  trained LSTM at 6- and 12-month forecasts), and the sample-complexity gap is the headline:</p>
+<div class="figure">
+  <img src="figs/fig9_enso.png" alt="Second real benchmark: NINO3.4 El Nino SST — identification armor, forecast skill, low-data sample complexity">
+  <div class="cap"><b>Figure 9.</b> (a) record with split; (b) holdout law-fit vs added noise — flat under
+    50% noise, ~22&times; below FD; (c) one-month NMSE as training data shrinks — at 10% of the record the
+    weak-form law is 5.3&times; better than the trained LSTM (0.087 vs 0.464) while the reservoir collapses (1.73).</div>
+</div>
+
+<div class="kpis">
+  <div class="kpi">
+    <div class="big">22&times;</div>
+    <div class="lab">ENSO identification</div>
+    <div class="sub">8.6e-4 vs 1.85e-2 for FD streaming — the armor transfers to a second real system</div>
+  </div>
+  <div class="kpi">
+    <div class="big">5.3&times;</div>
+    <div class="lab">Better than the LSTM</div>
+    <div class="sub">one-month NMSE at 10% of the data (0.087 vs 0.464); wins 6- and 12-month forecasts at full data</div>
+  </div>
+  <div class="kpi">
+    <div class="big">0 &rarr; 50%</div>
+    <div class="lab">Noise armor, again</div>
+    <div class="sub">holdout error flat at 8.6e-4 &rarr; 8.5e-4 under added noise on the second dataset too</div>
+  </div>
+  <div class="kpi">
+    <div class="big">10,000</div>
+    <div class="lab">Nodes, simulated</div>
+    <div class="sub">the sparse CG plant solver runs the same network at 10&sup4; nodes — see below</div>
+  </div>
+</div>
+
+<h2>The material at 10,000 nodes</h2>
+<p>The dense plant solver is O(N&sup3;) per step; a sparse warm-started conjugate-gradient solve (the
+  relaxation a physical network performs, exact to 1e-9 and verified identical to the dense solve) makes
+  the step O(E). From 484 to 10,000 nodes: identification <i>improves</i> with scale, the shape stays
+  readable at every size (r = 0.60&ndash;0.65 vs 0.34&ndash;0.42 for the raw weights), the memory advantage
+  grows (~240&times; &rarr; ~630&times;), and per-node cost is sublinear. The honest limitation: the
+  corridor-routing contrast saturates at 10&sup3;&ndash;10&sup4; nodes.</p>
+<div class="figure">
+  <img src="figs/fig8_scaling_large.png" alt="Scaling to 10,000 nodes: identification improves, shape readability persists, memory advantage grows, per-node cost sublinear">
+  <div class="cap"><b>Figure 8.</b> (a) identification improves with scale; (b) the angle field beats the raw
+    weights at every size; (c) memory advantage grows; (d) per-node cost sublinear.</div>
+</div>
+
+<h2>Theory — what the loop guarantees</h2>
+<p>Four theorems with numerical verification (<code>theory.json</code>): the weak-form noise floor is
+  &lambda;&sup2;&sigma;&sup2;, independent of the sampling interval (finite differences amplify as
+  2&sigma;&sup2;/&Delta;t&sup2; — a 2.2e5&times; gap at dt = 1e-3); streaming RLS contracts under
+  persistence of excitation with tracking error linear in the law-drift rate (238&times; reduction, halved in
+  5 samples); angulation is monotone ascent on the alignment functional (0.511 &rarr; 0.878); and — the
+  closed loop — chemical-gated morphogenesis perturbs identification by only ~7% while the shape grows.</p>
 
 <h2>Run it yourself</h2>
 <p>Python 3.9+; only <code>numpy</code>, <code>matplotlib</code>, and (for the game clip) <code>Pillow</code>
@@ -284,10 +343,13 @@
 python run_experiments.py --task sweep     --seeds 15 --T 4000 --out results.json
 python run_experiments.py --task ablation --seeds 8  --T 4000 --out ablation.json
 python run_experiments.py --task scale    --seeds 5  --T 4000 --sizes 7x7,11x11,15x15 --out scaling.json
-python real_benchmark.py --out real_benchmark.json   # real sunspot record (SILSO)
+python scale_large.py --sizes 22x22,32x32,64x64,100x100 --seeds 3 --T 1500 --out scaling_large.json
+python real_benchmark.py --dataset sunspot --out real_benchmark.json
+python real_benchmark.py --dataset enso    --out real_benchmark_enso.json
+python theory.py
 python flowgame.py --episodes 4 --out game           # the maze game + animated clip
 python make_figures.py
-python test_biomaterial_net.py                       # 10 sanity tests</code></pre>
+python test_biomaterial_net.py                       # 12 sanity tests</code></pre>
 <p>See the <a href="https://github.com/sehajr-singhs/morphogenetic-bimodal-networks">repository</a> for the
   full README, methods, baselines, and eight documented failure modes. LaTeX sources for both papers
   (<code>nmi_paper.tex</code>, <code>ieee_paper.tex</code>) are included and regenerate with

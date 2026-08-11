@@ -159,6 +159,45 @@ def _sunspot_slice(n=900):
     return (s - s[lo:hi + 1].mean()) / s[lo:hi + 1].std()
 
 
+def test_enso_loader_and_lstm_baseline():
+    """The second real dataset (NINO3.4) loads, and the pure-NumPy LSTM
+    baseline trains and forecasts without blowing up (a genuine deep-learning
+    baseline on the same protocol)."""
+    import real_benchmark as rb
+    s = rb.preprocess(rb.load_enso(), "enso")
+    assert len(s) > 900, f"ENSO record too short: {len(s)}"
+    n = len(s)
+    z = (s - s[: int(0.7 * n)].mean()) / s[: int(0.7 * n)].std()
+    tr_lo, tr_hi = 24, int(0.7 * n)
+    fl = rb.train_lstm(z, 24, 16, tr_lo, tr_hi, epochs=3, lr=0.005, seed=0)
+    t = tr_hi + 10
+    pred = fl(z, t, 6, 1)
+    assert np.isfinite(pred).all(), "LSTM forecast produced NaNs"
+    assert len(pred) == 6
+
+
+def test_weak_noise_floor_is_dt_independent():
+    """Theory T1: the weak-form operator's noise variance must be ~lam^2*sigma^2
+    and independent of dt, while finite differences scale as 1/dt^2 (verified
+    in theory.py; this is the 2e5x gap at dt=1e-3)."""
+    rng = np.random.default_rng(0)
+    lam, sigma = 3.0, 1.0
+    vw, vf = [], []
+    for dt in (1e-2, 1e-3):
+        alpha = np.exp(-lam * dt)
+        eps = rng.normal(0.0, sigma, 200_000)
+        A = 0.0
+        ys = np.zeros(len(eps))
+        for t in range(len(eps)):
+            A = alpha * A + (1.0 - alpha) * eps[t]
+            ys[t] = lam * (eps[t] - A)
+        vw.append(np.var(ys[100_000:]))
+        vf.append(np.var(np.diff(eps) / dt))
+    # weak variance flat across dt; FD grows as 1/dt^2
+    assert abs(vw[0] - vw[1]) < 0.1 * max(vw), (vw[0], vw[1])
+    assert vf[1] > 50 * vf[0], (vf[0], vf[1])
+
+
 def test_real_data_weak_form_generalizes_better_than_fd():
     """On REAL sunspot data, the frozen weak-form law must generalize to an
     unseen window far better than the finite-difference law (the 481x result,

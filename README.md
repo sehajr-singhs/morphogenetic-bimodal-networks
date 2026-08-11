@@ -71,15 +71,36 @@ ratio constant at ~590×, and self-organization *improves* with scale (wind alig
 0.71 → 0.87). Corridor specificity and routing weaken at scale — stated as limitations
 in the paper.
 
-**Real-data validation** (SILSO monthly sunspot numbers, 3331 real observations,
-1749–2026; delay-embedded as a ring of 24 lag nodes; law frozen after training):
-holdout law-fit NMSE on an unseen 27-year window is **1.9e-5 for the streaming
-weak form vs 9.1e-3 for finite-difference streaming (481×)** and 3.3× better than its
-own global batch version (streaming adapts); it stays flat under up to 50% added
-measurement noise while FD degrades. Forecasts through the frozen law (window-
-consistent integration) beat persistence at one month (0.116 vs 0.119) and FD laws
-by up to ~9× at 24 months (0.607 vs 5.449); AR(24)/ESN lead at long horizons — the
-identified-law state is ~10× smaller than the reservoir (0.13 vs 1.25 MB).
+**The material at 10⁴ nodes** (`scale_large.py`, sparse warm-started CG plant
+solver, exact to 1e-9 and verified identical to the dense solve; 3 seeds × 4 sizes,
+484 → 10,000 nodes): identification *improves* with scale (law-fit 0.032 → 0.020,
+physical NMSE 0.007 → 0.0016), the shape stays readable at every size (r = 0.60–0.65
+vs 0.34–0.42 for the raw weights), the memory advantage grows (~240× → ~630×), and
+per-node cost is sublinear (4.5 → 158 ms/step for 20.7× more nodes). Honest
+limitation: the corridor-routing contrast saturates at 10³–10⁴ nodes while
+identification and readability persist.
+
+**Real-data validation — two independent real streams, including modern deep
+learning.** (1) SILSO monthly sunspot numbers (3331 real observations, 1749–2026;
+delay-embedded as a ring of 24 lag nodes; law frozen after training): holdout
+law-fit NMSE on an unseen 27-year window is **1.9e-5 for the streaming weak form vs
+9.1e-3 for finite-difference streaming (481×)** and 3.3× better than its own global
+batch version; flat under up to 50% added measurement noise. Forecasts through the
+frozen law beat persistence at one month (0.116 vs 0.119) and FD laws by up to ~9×
+at 24 months; AR/ESN/LSTM (level-fitters) lead at long horizons — the boundary is
+stated. (2) NINO3.4 El Niño SST anomalies (943 real observations, 1948–2026),
+protocol unchanged: **22× below FD identification** (8.6e-4 vs 1.85e-2), noise armor
+flat, and the weak-form law **beats the trained LSTM at 6- and 12-month forecasts**
+and by **5.3× at one month with 10% of the data** (0.087 vs 0.464), where the
+reservoir collapses (1.73). A pure-NumPy LSTM (BPTT + Adam, no external deps) is
+now part of the baseline suite.
+
+**Theory** (`theory.py`): four theorems with numerical verification — a Δt-
+independent λ²σ² weak-form noise floor (vs 2σ²/Δt² for finite differences, a
+2.2e5× gap at dt=1e-3), RLS contraction under persistence of excitation (238×
+reduction, halved in 5 samples; tracking error linear in the law-drift rate),
+monotone angulation ascent (alignment 0.51 → 0.88), and closed-loop stability
+(morphogenesis perturbs identification by only ~7%).
 
 **Playable demonstration — Flowrunner** (`flowgame.py`; watch `game/preview.html`):
 the network plays a maze it never saw. An environment hides a winding high-
@@ -98,18 +119,24 @@ growing along the hidden law (dashed) and the token following it.
 |---|---|
 | `biomaterial_net.py` | core module (plant + identifier + morphogenesis) |
 | `run_experiments.py` | sweeps, ablation, scaling; baselines; metrics |
-| `real_benchmark.py` | real-data benchmark (SILSO sunspots; weak/FD streaming, batch SINDy, AR, ESN, persistence) |
+| `real_benchmark.py` | real-data benchmarks (SILSO sunspots + NINO3.4 ENSO; weak/FD streaming, batch SINDy, AR, ESN, LSTM, persistence; low-data + streaming panels) |
+| `scale_large.py` | scaling to 10⁴ nodes (sparse CG plant solver) |
+| `theory.py` | numerical verification of the four theorems |
 | `flowgame.py` | Flowrunner: the network plays a hidden-corridor maze (clips for mechanistic interpretability) |
-| `make_figures.py` | renders `figs/fig1..fig7` from the measured data |
-| `test_biomaterial_net.py` | 10 sanity tests (conservation, noise robustness, stability, shape read-back, Dirichlet solve, real-data) |
+| `make_figures.py` | renders `figs/fig1..fig9` from the measured data |
+| `test_biomaterial_net.py` | 12 sanity tests (conservation, noise robustness, stability, shape read-back, Dirichlet solve, real data, noise floor) |
 | `manuscript.md` | full submission-form paper (abstract, results, tables, figures, methods, references) |
 | `results.json` | 15-seed reference sweep |
 | `ablation.json` | 8-seed × 6-variant ablation |
 | `scaling.json` | 5-seed × 3 grid sizes |
-| `real_benchmark.json` | real-data benchmark results (identification + forecast tables) |
+| `scaling_large.json` | 3-seed × 4 sizes to 10,000 nodes |
+| `real_benchmark.json` | sunspot benchmark results (identification + forecast + low-data + online) |
+| `real_benchmark_enso.json` | ENSO benchmark results (same panels) |
+| `theory.json` | theorem verifications |
 | `data_sunspots.csv` | raw SILSO monthly sunspot numbers (public domain) |
+| `data_nino34.csv` | NINO3.4 SST anomaly index (NOAA/PSL, public domain) |
 | `game/` | Flowrunner results + animated clip + `preview.html` (self-contained, open in a browser) |
-| `figs/` | seven paper figures |
+| `figs/` | nine paper figures |
 | `docs/` | GitHub Pages site (landing page, game demo, papers, figures) |
 
 ## License
@@ -124,7 +151,11 @@ pip install numpy matplotlib
 python run_experiments.py --task sweep    --seeds 15 --T 4000 --out results.json
 python run_experiments.py --task ablation --seeds 8  --T 4000 --out ablation.json
 python run_experiments.py --task scale    --seeds 5  --T 4000 --sizes 7x7,11x11,15x15 --out scaling.json
-python real_benchmark.py --out real_benchmark.json   # downloads SILSO data if absent
+python real_benchmark.py --dataset sunspot --out real_benchmark.json
+python real_benchmark.py --dataset enso    --out real_benchmark_enso.json
+python scale_large.py --sizes 22x22,32x32,64x64,100x100 --seeds 3 --T 1500 \
+       --out scaling_large.json
+python theory.py
 python flowgame.py --episodes 4 --out game            # the maze game + clip
 python make_figures.py
 python test_biomaterial_net.py

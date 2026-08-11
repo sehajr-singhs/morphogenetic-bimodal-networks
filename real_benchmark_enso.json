@@ -1,0 +1,188 @@
+{
+  "meta": {
+    "dataset": "enso",
+    "d": 24,
+    "M": 12,
+    "tau": 1,
+    "lam": 0.15,
+    "ridge": 0.1,
+    "lam_rls": 0.005,
+    "p_ar": 24,
+    "esn_ridge": 0.01,
+    "n": 943,
+    "n_train": 660,
+    "n_val": 94,
+    "n_test": 188,
+    "source": "https://psl.noaa.gov/data/correlation/nina34.anom.data"
+  },
+  "per_horizon": {
+    "h1": {
+      "weak": 0.1015,
+      "fd_streaming": 0.0743,
+      "batch_weak": 0.0955,
+      "batch_fd": 0.0736,
+      "ar": 0.0749,
+      "esn": {
+        "mean": 0.5817,
+        "std": 0.0238
+      },
+      "lstm": 0.0898,
+      "persistence": 0.0854
+    },
+    "h6": {
+      "weak": 0.5384,
+      "fd_streaming": 0.5274,
+      "batch_weak": 0.5167,
+      "batch_fd": 0.5483,
+      "ar": 0.4268,
+      "esn": {
+        "mean": 1.8957,
+        "std": 0.1553
+      },
+      "lstm": 0.5745,
+      "persistence": 0.5485
+    },
+    "h12": {
+      "weak": 0.9195,
+      "fd_streaming": 1.0088,
+      "batch_weak": 0.8934,
+      "batch_fd": 1.0998,
+      "ar": 0.7386,
+      "esn": {
+        "mean": 2.5248,
+        "std": 0.2429
+      },
+      "lstm": 0.9843,
+      "persistence": 1.0283
+    },
+    "h24": {
+      "weak": 1.3334,
+      "fd_streaming": 1.4993,
+      "batch_weak": 1.3168,
+      "batch_fd": 1.9336,
+      "ar": 1.0047,
+      "esn": {
+        "mean": 7.7103,
+        "std": 7.9675
+      },
+      "lstm": 1.0895,
+      "persistence": 1.6785
+    }
+  },
+  "identification": {
+    "sigma0.0": {
+      "weak_streaming": 0.000856,
+      "fd_streaming": 0.01854,
+      "batch_weak": 0.001153,
+      "batch_fd": 0.014599,
+      "weak_in_sample_r2": 0.989228
+    },
+    "sigma0.05": {
+      "weak_streaming": 0.000855,
+      "fd_streaming": 0.01749,
+      "batch_weak": 0.001139,
+      "batch_fd": 0.014231,
+      "weak_in_sample_r2": 0.989183
+    },
+    "sigma0.2": {
+      "weak_streaming": 0.00085,
+      "fd_streaming": 0.01599,
+      "batch_weak": 0.001059,
+      "batch_fd": 0.014622,
+      "weak_in_sample_r2": 0.989618
+    },
+    "sigma0.5": {
+      "weak_streaming": 0.000845,
+      "fd_streaming": 0.01849,
+      "batch_weak": 0.000947,
+      "batch_fd": 0.017341,
+      "weak_in_sample_r2": 0.991929
+    }
+  },
+  "low_data": {
+    "frac0.1": {
+      "h1": {
+        "weak": 0.0871,
+        "lstm": 0.4639,
+        "ar": 0.2286,
+        "esn": 1.7257,
+        "persistence": 0.0854
+      },
+      "h12": {
+        "weak": 0.8849,
+        "lstm": 0.8495,
+        "ar": 1.7814,
+        "esn": 158.7262,
+        "persistence": 1.0283
+      }
+    },
+    "frac0.2": {
+      "h1": {
+        "weak": 0.0894,
+        "lstm": 0.1435,
+        "ar": 0.1075,
+        "esn": 1.8755,
+        "persistence": 0.0854
+      },
+      "h12": {
+        "weak": 0.877,
+        "lstm": 0.7078,
+        "ar": 0.7755,
+        "esn": 170.324,
+        "persistence": 1.0283
+      }
+    },
+    "frac0.4": {
+      "h1": {
+        "weak": 0.0896,
+        "lstm": 0.1552,
+        "ar": 0.0977,
+        "esn": 2.1723,
+        "persistence": 0.0854
+      },
+      "h12": {
+        "weak": 0.8701,
+        "lstm": 0.8604,
+        "ar": 0.8628,
+        "esn": 35.4406,
+        "persistence": 1.0283
+      }
+    }
+  },
+  "online": {
+    "h1": {
+      "weak_online": 0.1037,
+      "weak_frozen": 0.1015,
+      "lstm": 0.0898
+    },
+    "h6": {
+      "weak_online": 0.5514,
+      "weak_frozen": 0.5384,
+      "lstm": 0.5745
+    },
+    "h12": {
+      "weak_online": 0.9384,
+      "weak_frozen": 0.9195,
+      "lstm": 0.9843
+    },
+    "h24": {
+      "weak_online": 1.3574,
+      "weak_frozen": 1.3334,
+      "lstm": 1.0895
+    }
+  },
+  "weak": {
+    "law_fit_r2": 0.989227953935612,
+    "holdout_law_fit": 0.000856,
+    "mem_kb": 126.56
+  },
+  "esn": {
+    "mem_kb": 1250.0
+  },
+  "ar": {
+    "mem_kb": 0.188
+  },
+  "lstm": {
+    "mem_kb": 36.945
+  }
+}

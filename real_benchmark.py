@@ -34,6 +34,8 @@ import numpy as np
 
 DATA_URL = ("https://www.sidc.be/silso/INFO/snmtotcsv.php?nol_header=1")
 LOCAL = os.path.join(os.path.dirname(__file__), "data_sunspots.csv")
+ENSO_URL = "https://psl.noaa.gov/data/correlation/nina34.anom.data"
+ENSO_LOCAL = os.path.join(os.path.dirname(__file__), "data_nino34.csv")
 
 
 # ---------------------------------------------------------------- data I/O
@@ -58,9 +60,36 @@ def load_sunspots(path: str = LOCAL) -> np.ndarray:
     return np.array(rows, dtype=float)
 
 
-def preprocess(series: np.ndarray) -> np.ndarray:
-    """Variance-stabilizing sqrt (standard for count data), then z-score."""
-    return np.sqrt(np.maximum(series, 0.0))
+def load_enso(path: str = ENSO_LOCAL) -> np.ndarray:
+    """NINO3.4 monthly sea-surface temperature anomalies (NOAA/PSL,
+    1948-2026). First line is a header pair (start-year end-year); each
+    following line is <year> then 12 monthly values. Missing months are
+    dropped."""
+    if not os.path.exists(path):
+        import urllib.request
+        print(f"downloading {ENSO_URL} -> {path}")
+        urllib.request.urlretrieve(ENSO_URL, path)
+    rows = []
+    with open(path, encoding="utf-8") as f:
+        lines = f.readlines()
+    for line in lines[1:]:  # skip header
+        parts = line.split()
+        if len(parts) < 13:
+            continue
+        try:
+            vals = [float(x) for x in parts[1:13]]
+        except ValueError:
+            continue
+        rows.extend(v for v in vals if abs(v) < 90.0)  # NaN sentinels are 99.9
+    return np.array(rows, dtype=float)
+
+
+def preprocess(series: np.ndarray, dataset: str = "sunspot") -> np.ndarray:
+    """Variance-stabilizing sqrt for count data (sunspot), raw anomalies for
+    climate indices (ENSO); the caller z-scores on the training period only."""
+    if dataset == "sunspot":
+        return np.sqrt(np.maximum(series, 0.0))
+    return series.astype(float)
 
 
 # ---------------------------------------------------------------- embedding
@@ -429,6 +458,141 @@ def train_esn(series: np.ndarray, d: int, tau: int, t_lo: int, t_hi: int,
     return forecast
 
 
+def _sig(x):
+    return 1.0 / (1.0 + np.exp(-np.clip(x, -30, 30)))
+
+
+def _tanh(x):
+    return np.tanh(np.clip(x, -30, 30))
+
+
+def train_lstm(series: np.ndarray, p: int, n_h: int, t_lo: int, t_hi: int,
+               epochs: int = 80, lr: float = 0.01, seed: int = 0,
+               batch: int = 64) -> callable:
+    """A 1-layer LSTM in pure NumPy (input p lag values -> next value),
+    trained with BPTT and Adam -- a genuine deep-learning baseline with no
+    structural priors about the law, on the SAME train window and SAME
+    multistep evaluation protocol as every other model."""
+    rng = np.random.default_rng(seed)
+    idx = np.arange(t_lo + p - 1, t_hi)
+    X = np.stack([series[i - p + 1: i + 1] for i in idx], axis=0)  # (m, p)
+    Y = series[idx + 1]
+    xm, xs = float(X.mean()), float(X.std()) + 1e-9
+    ym, ys = float(Y.mean()), float(Y.std()) + 1e-9
+    Xn = (X - xm) / xs
+    Yn = (Y - ym) / ys
+    m = len(Xn)
+
+    def init(w, b):
+        return rng.normal(0.0, 0.1, w).astype(float), np.zeros(b)
+
+    # one input scalar per unroll step (the p lag values, one at a time)
+    Wxi, bxi = init((n_h, 1), n_h)     # input gate
+    Wxf, bxf = init((n_h, 1), n_h)     # forget gate
+    Wxo, bxo = init((n_h, 1), n_h)     # output gate
+    Wxc, bxc = init((n_h, 1), n_h)     # cell candidate
+    Uhi, _ = init((n_h, n_h), 0)
+    Uhf, _ = init((n_h, n_h), 0)
+    Uho, _ = init((n_h, n_h), 0)
+    Uhc, _ = init((n_h, n_h), 0)
+    Wy, by = init((1, n_h), 1)
+    params = [Wxi, bxi, Wxf, bxf, Wxo, bxo, Wxc, bxc,
+              Uhi, Uhf, Uho, Uhc, Wy, by]
+    m_ = [np.zeros_like(x) for x in params]
+    v_ = [np.zeros_like(x) for x in params]
+    tstep = 0
+
+    def _gates(x, h):
+        # x: (1, B) or (1, 1); h: (n_h, B)
+        pi = Wxi @ x + Uhi @ h + bxi[:, None]
+        pf = Wxf @ x + Uhf @ h + bxf[:, None]
+        po = Wxo @ x + Uho @ h + bxo[:, None]
+        pc = Wxc @ x + Uhc @ h + bxc[:, None]
+        return _sig(pi), _sig(pf), _sig(po), _tanh(pc)
+
+    for epoch in range(epochs):
+        perm = rng.permutation(m)
+        for b0 in range(0, m, batch):
+            b = perm[b0: b0 + batch]
+            xb = Xn[b].T                       # (p, B)
+            yb = Yn[b]                         # (B,)
+            B = len(b)
+            h = np.zeros((n_h, B)); c = np.zeros((n_h, B))
+            hs, cs, gates = [], [], []
+            for k in range(p):
+                i, f, o, gc = _gates(xb[k][None, :], h)   # (1, B) input
+                c = f * c + i * gc
+                h = o * _tanh(c)
+                hs.append(h); cs.append(c); gates.append((i, f, o, gc))
+            pred = Wy @ h + by[:, None]        # (1, B)
+            loss = 0.5 * np.mean((pred[0] - yb) ** 2)
+            dWy = ((pred[0] - yb)[None, :] * h).mean(axis=1, keepdims=True).T
+            dby = np.array([np.mean(pred[0] - yb)])
+            dh = (Wy.T @ (pred[0] - yb)[None, :]) / B    # (n_h, B)
+            dc = np.zeros_like(c)
+            dWxi = np.zeros_like(Wxi); dWxf = np.zeros_like(Wxf)
+            dWxo = np.zeros_like(Wxo); dWxc = np.zeros_like(Wxc)
+            dUhi = np.zeros_like(Uhi); dUhf = np.zeros_like(Uhf)
+            dUho = np.zeros_like(Uho); dUhc = np.zeros_like(Uhc)
+            dbxi = np.zeros(n_h); dbxf = np.zeros(n_h)
+            dbxo = np.zeros(n_h); dbxc = np.zeros(n_h)
+            for k in reversed(range(p)):
+                i, f, o, gc = gates[k]
+                cc = cs[k]
+                do = dh * _tanh(cc)
+                dc += dh * o * (1.0 - _tanh(cc) ** 2)
+                dgc = dc * i
+                di = dc * gc
+                df = dc * cc
+                dc = dc * f
+                dg_in = dgc * (1.0 - gc ** 2)
+                xk = xb[k][None, :]                    # (1, B)
+                hprev = hs[k - 1] if k > 0 else np.zeros((n_h, B))
+                dWxc += dg_in @ xk.T / B
+                dUhc += dg_in @ hprev.T / B
+                dbxc += dg_in.mean(axis=1)
+                dWxo += (do * o * (1.0 - o)) @ xk.T / B
+                dUho += (do * o * (1.0 - o)) @ hprev.T / B
+                dbxo += (do * o * (1.0 - o)).mean(axis=1)
+                dWxi += (di * i * (1.0 - i)) @ xk.T / B
+                dUhi += (di * i * (1.0 - i)) @ hprev.T / B
+                dbxi += (di * i * (1.0 - i)).mean(axis=1)
+                dWxf += (df * f * (1.0 - f)) @ xk.T / B
+                dUhf += (df * f * (1.0 - f)) @ hprev.T / B
+                dbxf += (df * f * (1.0 - f)).mean(axis=1)
+                dh = (Uhi.T @ (di * i * (1.0 - i))
+                      + Uhf.T @ (df * f * (1.0 - f))
+                      + Uhc.T @ dg_in
+                      + Uho.T @ (do * o * (1.0 - o)))
+            grads = [dWxi, dbxi, dWxf, dbxf, dWxo, dbxo, dWxc, dbxc,
+                     dUhi, dUhf, dUho, dUhc, dWy, dby]
+            tstep += 1
+            for j, (gp, pj) in enumerate(zip(grads, params)):
+                m_[j] = 0.9 * m_[j] + 0.1 * gp
+                v_[j] = 0.999 * v_[j] + 0.001 * gp ** 2
+                mh = m_[j] / (1.0 - 0.9 ** tstep)
+                vh = v_[j] / (1.0 - 0.999 ** tstep)
+                pj -= lr * mh / (np.sqrt(vh) + 1e-8)
+
+    def _fwd(win):
+        h = np.zeros((n_h, 1)); c = np.zeros((n_h, 1))
+        for k in range(p):
+            i, f, o, gc = _gates(np.array([[win[k]]]), h)
+            c = f * c + i * gc
+            h = o * _tanh(c)
+        return (Wy @ h + by).item() * ys + ym
+
+    def forecast(series_, t, h, tau_=None):
+        win = (series_[t - p + 1: t + 1] - xm) / xs
+        preds = np.zeros(h)
+        for s in range(h):
+            pv = _fwd(win)
+            preds[s] = pv
+            win = np.concatenate([win[1:], [(pv - ym) / ys]])
+        return preds
+    return forecast
+
+
 # ---------------------------------------------------------------- evaluation
 def eval_horizon(forecast_fn, series: np.ndarray, test_lo: int, test_hi: int,
                  h: int, tau: int, z_mean: float, z_std: float,
@@ -448,9 +612,12 @@ def run(lam: float = 0.15, ridge: float = 0.1, lam_rls: float = 0.005,
         d: int = 24, M: int = 12, tau: int = 1, p_ar: int = 24,
         esn_ridge: float = 1e-2, esn_seeds: int = 3,
         out: str = "real_benchmark.json", horizons=(1, 6, 12, 24),
-        noise_levels=(0.0, 0.05, 0.2, 0.5), noise_seeds: int = 3) -> dict:
-    raw = load_sunspots()
-    s = preprocess(raw)
+        noise_levels=(0.0, 0.05, 0.2, 0.5), noise_seeds: int = 3,
+        dataset: str = "sunspot", lstm_hidden: int = 24,
+        lstm_epochs: int = 60, lstm_lr: float = 0.005,
+        low_fracs=(0.10, 0.20, 0.40)) -> dict:
+    raw = load_sunspots() if dataset == "sunspot" else load_enso()
+    s = preprocess(raw, dataset)
     n = len(s)
 
     # split: train / validation (tuning) / test, all on real data
@@ -467,11 +634,13 @@ def run(lam: float = 0.15, ridge: float = 0.1, lam_rls: float = 0.005,
     z = (s - z_mean) / z_std
     zc = z.copy()
 
-    results = {"meta": dict(d=d, M=M, tau=tau, lam=lam, ridge=ridge,
-                            lam_rls=lam_rls, p_ar=p_ar,
-                            esn_ridge=esn_ridge, n_train=n_train, n_val=n_val,
-                            n_test=te_hi - te_lo + 1, source=DATA_URL),
-               "per_horizon": {}, "identification": {}}
+    src = DATA_URL if dataset == "sunspot" else ENSO_URL
+    results = {"meta": dict(dataset=dataset, d=d, M=M, tau=tau, lam=lam,
+                            ridge=ridge, lam_rls=lam_rls, p_ar=p_ar,
+                            esn_ridge=esn_ridge, n=n, n_train=n_train,
+                            n_val=n_val, n_test=te_hi - te_lo + 1, source=src),
+               "per_horizon": {}, "identification": {}, "low_data": {},
+               "online": {}}
 
     # ---------------- identification panel (frozen law, unseen decades)
     ident = {}
@@ -516,8 +685,74 @@ def run(lam: float = 0.15, ridge: float = 0.1, lam_rls: float = 0.005,
     f_bf, _ = train_batch_fd(z, d, M, tau, ridge, tr_lo, tr_hi)
     f_ar = train_ar(z, p_ar, tr_lo, tr_hi, ridge)
     f_persist = lambda s_, t, h, tau_: np.full(h, s_[t])
+    f_lstm = train_lstm(z, d, lstm_hidden, tr_lo, tr_hi, epochs=lstm_epochs,
+                        lr=lstm_lr, seed=0)
     esn_list = [train_esn(z, d, tau, tr_lo, tr_hi, ridge=esn_ridge, seed=sd)
                 for sd in range(esn_seeds)]
+
+    # weak form in its NATIVE mode: keep streaming observations through the
+    # held-out window, never retraining -- the law adapts, so the forecast at
+    # time t uses the law as updated by everything up to t. A FRESH learner
+    # per horizon evaluation (no test information leaks between horizons).
+    A_traj_full = lr.ema_trajectory(z, tau)
+
+    def make_online():
+        lo = train_weak(z, d, M, tau, lam, ridge, tr_lo, tr_hi,
+                        lam_rls=lam_rls, drive=True, level=False)
+        seen = {"t": tr_hi}
+
+        def f_online(series_, t, h, tau_):
+            for tt in range(seen["t"] + 1, t + 1):
+                lo.observe(series_[tt - tau_ * np.arange(d)])
+            seen["t"] = t
+            return WeakFormLearner.forecast(lo, series_, t, h, tau_,
+                                            A_traj=A_traj_full)
+        return f_online
+
+    # ---------- low-data panel: same test window, shrinking train window.
+    #      The weak form imposes a law structure (a few parameters per node),
+    #      deep learners fit the level from data -- sample complexity diverges.
+    for frac in low_fracs:
+        t_hi_f = tr_lo + int(frac * (tr_hi - tr_lo))
+        if t_hi_f - tr_lo < d + 2:
+            continue
+        lr_f = train_weak(z, d, M, tau, lam, ridge, tr_lo, t_hi_f,
+                          lam_rls=lam_rls, drive=True, level=False)
+        A_f = lr_f.ema_trajectory(z, tau)
+        fw_f = lambda s_, t, h, tau_, **kw: \
+            WeakFormLearner.forecast(lr_f, s_, t, h, tau_, A_traj=A_f)
+        fl_f = train_lstm(z, d, lstm_hidden, tr_lo, t_hi_f,
+                          epochs=lstm_epochs, lr=lstm_lr, seed=0)
+        fa_f = train_ar(z, p_ar, tr_lo, t_hi_f, ridge)
+        fe_f = train_esn(z, d, tau, tr_lo, t_hi_f, ridge=esn_ridge, seed=0)
+        fp_f = lambda s_, t, h, tau_: np.full(h, s_[t])
+        row = {}
+        for h in (1, 12):
+            row[f"h{h}"] = {
+                "weak": round(eval_horizon(fw_f, z, te_lo, te_hi, h, tau,
+                                           z_mean, z_std), 4),
+                "lstm": round(eval_horizon(fl_f, z, te_lo, te_hi, h, tau,
+                                            z_mean, z_std), 4),
+                "ar": round(eval_horizon(fa_f, z, te_lo, te_hi, h, tau,
+                                          z_mean, z_std), 4),
+                "esn": round(eval_horizon(fe_f, z, te_lo, te_hi, h, tau,
+                                           z_mean, z_std), 4),
+                "persistence": round(eval_horizon(fp_f, z, te_lo, te_hi, h,
+                                                   tau, z_mean, z_std), 4),
+            }
+        results["low_data"][f"frac{frac}"] = row
+
+    # ---------- online panel: streaming adaptation through the test window
+    #      (weak form, native) vs frozen deep/linear baselines
+    for h in (1, 6, 12, 24):
+        results["online"][f"h{h}"] = {
+            "weak_online": round(eval_horizon(make_online(), z, te_lo, te_hi,
+                                               h, tau, z_mean, z_std), 4),
+            "weak_frozen": round(eval_horizon(lr.forecast, z, te_lo, te_hi,
+                                               h, tau, z_mean, z_std), 4),
+            "lstm": round(eval_horizon(f_lstm, z, te_lo, te_hi, h, tau,
+                                        z_mean, z_std), 4),
+        }
 
     results["weak"] = {
         "law_fit_r2": lr.law_fit(z, tr_lo, tr_hi, tau),
@@ -526,10 +761,13 @@ def run(lam: float = 0.15, ridge: float = 0.1, lam_rls: float = 0.005,
     }
     results["esn"] = {"mem_kb": round(400.0 * 400.0 * 8 / 1024, 1)}
     results["ar"] = {"mem_kb": round(p_ar * 8 / 1024, 3)}
+    n_lstm_p = 4 * (lstm_hidden * d + lstm_hidden * lstm_hidden + lstm_hidden)\
+        + (lstm_hidden + 1)
+    results["lstm"] = {"mem_kb": round(n_lstm_p * 8 / 1024, 3)}
 
     models = {"weak": lr.forecast, "fd_streaming": f_fd, "batch_weak": f_bw,
               "batch_fd": f_bf, "ar": f_ar, "esn": esn_list,
-              "persistence": f_persist}
+              "lstm": f_lstm, "persistence": f_persist}
     for h in horizons:
         row = {}
         for name, fn in models.items():
@@ -553,12 +791,23 @@ if __name__ == "__main__":
     kwargs = {}
     for flag, cast in (("--lam", float), ("--ridge", float),
                        ("--lam_rls", float), ("--out", str),
-                       ("--p_ar", int), ("--esn_ridge", float)):
+                       ("--p_ar", int), ("--esn_ridge", float),
+                       ("--dataset", str), ("--lstm_epochs", int),
+                       ("--lstm_hidden", int)):
         if flag in sys.argv:
             kwargs[flag[2:]] = cast(sys.argv[sys.argv.index(flag) + 1])
     r = run(**kwargs)
+    print(f"== dataset: {r['meta']['dataset']} (n={r['meta']['n']}) ==")
+    print("forecast NMSE:")
     for h, row in r["per_horizon"].items():
         line = "  ".join(f"{k}: {v}" if not isinstance(v, dict)
                          else f"{k}: {v['mean']}+-{v['std']}"
                          for k, v in row.items())
-        print(f"{h}: {line}")
+        print(f"  {h}: {line}")
+    print("low-data (weak vs lstm vs ar vs esn vs persist):")
+    for k, row in r["low_data"].items():
+        print(f"  {k}: " + ", ".join(f"{hk} {m}:{v}" for hk, d in row.items()
+                                     for m, v in d.items()))
+    print("online (weak_online vs weak_frozen vs lstm):")
+    for h, row in r["online"].items():
+        print(f"  {h}: " + ", ".join(f"{m}:{v}" for m, v in row.items()))

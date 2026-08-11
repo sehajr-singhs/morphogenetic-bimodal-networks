@@ -260,6 +260,41 @@ class MorphogeneticNet:
             * (1.0 + cfg["lam_g"] * a_ij)
         return kappa, a_ij, cbar, kappa0
 
+    def _Lx(self, x: np.ndarray, kappa: np.ndarray) -> np.ndarray:
+        """Sparse weighted-Laplacian matvec: O(E), no dense matrix."""
+        d = kappa * (x[self.ei] - x[self.ej])
+        out = np.zeros(self.N)
+        np.add.at(out, self.ei, d)
+        np.add.at(out, self.ej, -d)
+        return out
+
+    def _cg_solve(self, A_fn, b: np.ndarray, x0: np.ndarray,
+                  tol: float = 1e-9, maxit: int = 400) -> np.ndarray:
+        """Preconditioner-free conjugate gradient on A x = b (A SPD),
+        warm-started at x0 (the previous field)."""
+        x = x0.copy()
+        r = b - A_fn(x)
+        p = r.copy()
+        rs = float(r @ r)
+        bn = float(b @ b) + 1e-30
+        if rs < tol * tol * bn:
+            return x
+        for _ in range(maxit):
+            Ap = A_fn(p)
+            denom = float(p @ Ap)
+            if denom <= 0.0:
+                break
+            alpha = rs / denom
+            x = x + alpha * p
+            r = r - alpha * Ap
+            rs_new = float(r @ r)
+            if rs_new < tol * tol * bn:
+                break
+            beta = rs_new / rs
+            p = r + beta * p
+            rs = rs_new
+        return x
+
     def route_probe(self, src: int, sink: int, V: float = 1.0):
         """Steady-state routing probe: fix src at +V and sink at -V and solve
         the Dirichlet problem for the learned material. Returns per-edge
@@ -267,11 +302,6 @@ class MorphogeneticNet:
         tested against what the geometry alone predicts."""
         cfg = self.cfg
         kappa, _, cbar, _ = self._compute_kappa()
-        L = np.zeros((self.N, self.N))
-        np.add.at(L, (self.ei, self.ei), kappa)
-        np.add.at(L, (self.ej, self.ej), kappa)
-        np.add.at(L, (self.ei, self.ej), -kappa)
-        np.add.at(L, (self.ej, self.ei), -kappa)
         u = self.route_potential(src, sink, V)
         flux = np.abs(kappa * (u[self.ej] - u[self.ei]))
         return flux, cbar
@@ -286,6 +316,26 @@ class MorphogeneticNet:
         measurement a boundary-layer artifact."""
         cfg = self.cfg
         kappa, _, _, _ = self._compute_kappa()
+        solver = cfg.get("solver", "dense")
+        if solver == "cg":
+            # Dirichlet conditioning as a matvec: pin src/sink rows to the
+            # identity, move the pinned columns' contribution to the RHS.
+            def A_fn(x):
+                out = self._Lx(x, kappa) + cfg["gamma_u"] * x
+                out[[src, sink]] = x[[src, sink]]
+                return out
+
+            b = np.zeros(self.N)
+            ones = np.zeros(self.N)
+            ones[src] = V
+            ones[sink] = -V
+            b = b - self._Lx(ones, kappa) - cfg["gamma_u"] * ones
+            b[src] = V
+            b[sink] = -V
+            x0 = np.zeros(self.N)
+            x0[src] = V
+            x0[sink] = -V
+            return self._cg_solve(A_fn, b, x0, tol=1e-9, maxit=800)
         L = np.zeros((self.N, self.N))
         np.add.at(L, (self.ei, self.ei), kappa)
         np.add.at(L, (self.ej, self.ej), kappa)
@@ -312,13 +362,26 @@ class MorphogeneticNet:
         # The flux is anti-symmetric (conservative interior exchange); the
         # implicit solve keeps the update unconditionally stable for any
         # conductivity (port-Hamiltonian structure preserved).
-        L = np.zeros((self.N, self.N))
-        np.add.at(L, (self.ei, self.ei), kappa)
-        np.add.at(L, (self.ej, self.ej), kappa)
-        np.add.at(L, (self.ei, self.ej), -kappa)
-        np.add.at(L, (self.ej, self.ei), -kappa)
-        A = np.eye(self.N) * (1.0 + dt * cfg["gamma_u"]) + dt * L
-        self.u = np.linalg.solve(A, self.u + dt * I)
+        solver = cfg.get("solver", "dense")
+        if solver == "cg":
+            # iterative conjugate-gradient solve on the SPARSE Laplacian,
+            # warm-started from the previous state: O(E) per iteration, exact
+            # to tolerance. This is how a physical material actually relaxes
+            # (local dissipation, not a global matrix factorization), and it
+            # is what makes the material simulable at 10^3-10^4 nodes where
+            # the dense N x N factorization is O(N^3).
+            A_fn = lambda x: (1.0 + dt * cfg["gamma_u"]) * x \
+                + dt * self._Lx(x, kappa)
+            self.u = self._cg_solve(A_fn, self.u + dt * I, self.u.copy(),
+                                    tol=1e-9)
+        else:
+            L = np.zeros((self.N, self.N))
+            np.add.at(L, (self.ei, self.ei), kappa)
+            np.add.at(L, (self.ej, self.ej), kappa)
+            np.add.at(L, (self.ei, self.ej), -kappa)
+            np.add.at(L, (self.ej, self.ei), -kappa)
+            A = np.eye(self.N) * (1.0 + dt * cfg["gamma_u"]) + dt * L
+            self.u = np.linalg.solve(A, self.u + dt * I)
 
         # chemical: release -> slow diffusion + advection -> decay.
         # The advection "wind" (neuromodulator drift) breaks the spatial

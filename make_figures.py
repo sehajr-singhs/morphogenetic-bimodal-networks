@@ -347,5 +347,143 @@ fig.tight_layout(rect=[0, 0, 1, 0.9])
 fig.savefig(f"{OUT}/fig7_realdat.png", dpi=150)
 plt.close(fig)
 
+# ---------------------------------------------------------------- Fig 8:
+# scaling to 10^4 nodes (sparse warm-started CG plant solver)
+SL = json.load(open("scaling_large.json"))
+sizes_l = ["22x22", "32x32", "64x64", "100x100"]
+n_nodes_l = [runs[0]["N"] for runs in (SL[s] for s in sizes_l)]
+
+fig, axes = plt.subplots(1, 4, figsize=(19, 4.2))
+
+ax = axes[0]
+for key, lab, col in [("nmse_y", "law-fit NMSE", "tab:blue"),
+                      ("nmse", "physical 1-step NMSE", "tab:green")]:
+    m = [np.mean([r[key] for r in SL[s]]) for s in sizes_l]
+    ax.semilogy(n_nodes_l, m, "o-", label=lab, color=col)
+ax.set_xscale("log")
+ax.set_xlabel("nodes N"); ax.set_ylabel("NMSE")
+ax.set_title("(a) Identification improves\nwith scale")
+ax.legend(fontsize=7)
+
+ax = axes[1]
+for key, lab, col in [("corr_g_phys", "shape vs law (readability)",
+                       "tab:red"),
+                      ("corr_w_phys", "raw weights vs law", "0.5")]:
+    m = [np.mean([r[key] for r in SL[s]]) for s in sizes_l]
+    ax.plot(n_nodes_l, m, "o-", label=lab, color=col)
+ax.set_xscale("log")
+ax.set_ylim(0, 1)
+ax.set_xlabel("nodes N"); ax.set_ylabel("Pearson r")
+ax.set_title("(b) The shape stays readable:\nangles beat weights at every size")
+ax.legend(fontsize=7)
+
+ax = axes[2]
+m = [np.mean([r["oracle_bytes"] / r["local_bytes"] for r in SL[s]])
+     for s in sizes_l]
+ax.semilogy(n_nodes_l, m, "o-", color="tab:red")
+ax.set_xscale("log")
+ax.set_xlabel("nodes N")
+ax.set_ylabel("memory ratio (batch frame-buffer / local)")
+ax.set_title("(c) Memory advantage grows\nwith scale")
+
+ax = axes[3]
+m = [np.mean([r["ms_per_step"] for r in SL[s]]) for s in sizes_l]
+ax.loglog(n_nodes_l, m, "o-", color="tab:purple")
+ax.set_xlabel("nodes N")
+ax.set_ylabel("wall ms per simulation step")
+ax.set_title("(d) Per-node cost stays flat\n(sublinear scaling)")
+
+fig.suptitle("Figure 8 | The material at 10^4 nodes (sparse warm-started "
+             "CG plant solver; 3 seeds per size)")
+fig.tight_layout(rect=[0, 0, 1, 0.9])
+fig.savefig(f"{OUT}/fig8_scaling_large.png", dpi=150)
+plt.close(fig)
+
+# ---------------------------------------------------------------- Fig 9:
+# second real benchmark: NINO3.4 El Nino SST anomalies (NOAA/PSL)
+import real_benchmark as rb
+
+RE = json.load(open("real_benchmark_enso.json"))
+meta_e = RE["meta"]
+d_e, M_e, tau_e = meta_e["d"], meta_e["M"], meta_e["tau"]
+lam_e, ridge_e, lrls_e = meta_e["lam"], meta_e["ridge"], meta_e["lam_rls"]
+raw_e = rb.load_enso()
+s_e = rb.preprocess(raw_e, "enso")
+n_e = len(s_e)
+n_tr_e, n_va_e = int(0.70 * n_e), int(0.10 * n_e)
+tr_lo_e, tr_hi_e = d_e, n_tr_e
+va_lo_e, va_hi_e = n_tr_e + 1, n_tr_e + n_va_e
+te_lo_e, te_hi_e = n_tr_e + n_va_e + 1, n_e - 1
+zm_e = float(s_e[tr_lo_e: tr_hi_e + 1].mean())
+zsd_e = float(s_e[tr_lo_e: tr_hi_e + 1].std())
+z_e = (s_e - zm_e) / zsd_e
+lr_e = rb.train_weak(z_e, d_e, M_e, tau_e, lam_e, ridge_e, tr_lo_e,
+                     tr_hi_e, lam_rls=lrls_e, drive=True, level=False)
+A_e = lr_e.ema_trajectory(z_e, tau_e)
+
+fig, axes = plt.subplots(1, 3, figsize=(15, 4.4))
+
+# (a) series + split + sample forecast
+ax = axes[0]
+t_yr_e = np.arange(n_e) / 12.0 + 1948.0
+ax.plot(t_yr_e, s_e, color="0.75", lw=0.7,
+        label="NINO3.4 monthly SST anomaly")
+ax.axvspan(1948.0, 1948.0 + tr_hi_e / 12.0, color="tab:blue", alpha=0.08)
+ax.axvspan(1948.0 + (tr_hi_e + 1) / 12.0, 1948.0 + va_hi_e / 12.0,
+           color="tab:green", alpha=0.10)
+ax.axvspan(1948.0 + (va_hi_e + 1) / 12.0, 1948.0 + te_hi_e / 12.0,
+           color="tab:red", alpha=0.08)
+ax.text(1955, 0.95, "train", fontsize=8, color="tab:blue")
+ax.text(1993, 0.95, "val", fontsize=8, color="tab:green")
+ax.text(2004, 0.95, "test", fontsize=8, color="tab:red")
+t0_e = te_lo_e + 30
+fh_e = 12
+fc_e = lr_e.forecast(z_e, t0_e, fh_e, tau_e, A_traj=A_e)
+ax.plot(t_yr_e[t0_e + 1: t0_e + fh_e + 1], fc_e, "o-", color="tab:red",
+        ms=3, lw=1.2, label="12-month weak-form forecast")
+ax.axvline(t_yr_e[t0_e], color="k", lw=0.8, ls=":")
+ax.set_xlabel("year"); ax.set_ylabel("SST anomaly ($^\\circ$C)")
+ax.set_title("(a) Real 78-year record, one forecast")
+ax.legend(fontsize=7, loc="upper left")
+
+# (b) noise robustness
+ax = axes[1]
+sigmas_e = [float(k.replace("sigma", "")) for k in RE["identification"]]
+for key, lab, col, mk in [("weak_streaming", "weak-form streaming",
+                           "tab:blue", "o"),
+                          ("fd_streaming", "FD streaming", "tab:orange", "s"),
+                          ("batch_weak", "batch weak (SINDy)",
+                           "tab:cyan", "^"),
+                          ("batch_fd", "batch FD (SINDy)",
+                           "tab:red", "v")]:
+    ys = [RE["identification"][k][key] for k in RE["identification"]]
+    ax.semilogy(sigmas_e, ys, f"{mk}-", label=lab, color=col)
+ax.set_xlabel("added measurement noise (fraction of signal std)")
+ax.set_ylabel("holdout law-fit NMSE (signal-normalized)")
+ax.set_title("(b) Identification armor holds on\na second real stream")
+ax.legend(fontsize=7)
+
+# (c) low-data: weak vs deep/linear learners as training data shrinks
+ax = axes[2]
+fracs = [float(k.replace("frac", "")) for k in RE["low_data"]]
+fracs.sort()
+for key, lab, col, mk in [("weak", "weak-form law", "tab:blue", "o"),
+                          ("lstm", "LSTM (trained net)", "tab:red", "s"),
+                          ("ar", "AR(24)", "tab:green", "^"),
+                          ("esn", "ESN", "tab:purple", "v"),
+                          ("persistence", "persistence", "k", "d")]:
+    ys = [RE["low_data"][f"frac{f}"]["h1"][key] for f in fracs]
+    ax.plot(fracs, ys, f"{mk}-", label=lab, color=col)
+ax.set_xlabel("fraction of training data")
+ax.set_ylabel("1-month forecast NMSE")
+ax.set_title("(c) Sample complexity: the law is learned\nfrom a few hundred months")
+ax.legend(fontsize=7)
+
+fig.suptitle("Figure 9 | Second real benchmark: NINO3.4 El Nino SST "
+             "anomalies (943 months, 1948-2026; NOAA/PSL)")
+fig.tight_layout(rect=[0, 0, 1, 0.9])
+fig.savefig(f"{OUT}/fig9_enso.png", dpi=150)
+plt.close(fig)
+
 print(f"figures written to {OUT}/")
 print(sorted(os.listdir(OUT)))
