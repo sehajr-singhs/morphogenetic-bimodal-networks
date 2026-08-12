@@ -559,6 +559,19 @@ reaction--diffusion--advection gate and the explicit read-back metric. The close
 conceptual ancestor is Turing's morphogenesis~\cite{Turing52}: a reaction--diffusion
 field that patterns a \emph{learning} material, and the pattern is the computation.
 
+\textbf{Broader impact and outlook.} Three measured properties point at problems
+outside the current paradigm: (i) \emph{edge learning} --- strictly local, streaming,
+global-loss-free updates at $O(E)$ per step with ${\sim}630\times$ less memory than a
+reservoir, so the network that uses the world can learn from it on-device; (ii)
+\emph{inspectable AI} --- the shape is a readable map of the learned mechanism, so
+interpretability is a construction property, not a post-hoc tool; (iii) \emph{law
+discovery in scarce, noisy data} --- $481\times$/ $22\times$ below finite-difference
+identification on two real records, flat under 50\% noise, and $5.3\times$ better
+than a trained LSTM at 10\% of the data. Each is a measured capability with a defined
+next experiment; the decisive one is physical implementation, since the local IIR
+weak form and nematic consensus are, by construction, update rules a
+resistive-electronic material could perform.
+
 \section{Methods}
 \subsection{Electrical Continuum}
 Nodes $i$ with positions $p_i \in \mathbb{R}^3$ and potentials $u_i(t)$ obey weighted

@@ -885,6 +885,26 @@ conceptual ancestor is Turing's morphogenesis\natref{Turing52}: a reaction--diff
 field that patterns a material --- here, it patterns a \emph{learning} material, and the
 pattern is the computation.
 
+\textbf{Broader impact and outlook.} Three measured properties of the architecture
+point at open problems that sit outside the current deep-learning paradigm. (i)
+\emph{Learning at the edge:} strictly local, streaming updates with no global loss
+mean the network that uses the world can learn from it continuously, on-device, at
+$O(E)$ per step and ${\sim}630\times$ less memory than a reservoir baseline --- the
+compute budget of a microcontroller, not a cluster. (ii) \emph{Inspectable AI:} the
+emergent shape is a readable map of the learned mechanism, so interpretability is a
+construction property rather than a post-hoc tool --- directly relevant to
+safety-critical deployment. (iii) \emph{Law discovery in data-scarce regimes:}
+$481\times$ and $22\times$ below finite-difference identification on two independent
+real records, flat under 50\% added measurement noise, and $5.3\times$ better than a
+trained LSTM at 10\% of the data --- the sample-complexity regime (climate, biology,
+materials) where data is scarce and noisy. None of these is a claim the current
+experiments fully discharge; each is a measured capability with a defined next
+experiment. The decisive one is physical implementation: the local IIR weak form and
+the nematic consensus are, by construction, update rules a resistive-electronic or
+optoelectronic material could perform, and running the identifier on a physical
+substrate is the experiment we regard as changing the category of the claims made
+here.
+
 \section{Methods}
 \small
 \subsection{The fast electrical continuum}
