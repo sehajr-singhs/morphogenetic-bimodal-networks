@@ -124,6 +124,7 @@ growing along the hidden law (dashed) and the token following it.
 | `theory.py` | numerical verification of the four theorems |
 | `flowgame.py` | Flowrunner: the network plays a hidden-corridor maze (clips for mechanistic interpretability) |
 | `make_figures.py` | renders `figs/fig1..fig9` from the measured data |
+| `make_paradigm_fig.py` | renders the CROWN-style 3-panel angle-paradigm hero figure |
 | `test_biomaterial_net.py` | 12 sanity tests (conservation, noise robustness, stability, shape read-back, Dirichlet solve, real data, noise floor) |
 | `manuscript.md` | full submission-form paper (abstract, results, tables, figures, methods, references) |
 | `results.json` | 15-seed reference sweep |
@@ -158,6 +159,7 @@ python scale_large.py --sizes 22x22,32x32,64x64,100x100 --seeds 3 --T 1500 \
 python theory.py
 python flowgame.py --episodes 4 --out game            # the maze game + clip
 python make_figures.py
+python make_paradigm_fig.py                            # the angle-paradigm hero figure
 python test_biomaterial_net.py
 ```
 

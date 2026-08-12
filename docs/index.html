@@ -5,7 +5,7 @@
   <meta name="description" content="Morphogenetic Bi-Modal Networks: a gradient-free, locally-streaming neural architecture with a 3D angle channel. Weights say how strongly; angles say where. Angles are the computation; the shape is the interpretable spectrum.">
   <meta name="keywords" content="neural networks, no backpropagation, local learning, weak form, interpretability, morphogenesis, angle channel, mechanistic interpretability">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Morphogenetic Bi-Modal Networks: Two Channels of Computation — Weights and Angles</title>
+  <title>Morphogenetic Bi-Modal Networks — the network that computes with angles</title>
 
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/computer-modern/cmu-serif.css">
@@ -27,7 +27,7 @@
       --panel: #f8f8f8;
       --border: #c4c6c8;
       --link: #226999;
-      --accent: #2f8558;
+      --accent: #1a1a1a;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     html { background: #fff; }
@@ -102,6 +102,25 @@
     .external-link.button .icon { display: inline-flex; }
     .external-link.button svg { width: 15px; height: 15px; fill: currentColor; }
 
+    /* ---------- Paradigm hero figure ---------- */
+    .paradigm { margin: 2.4rem auto 0; max-width: 1000px; }
+    .paradigm img {
+      width: 100%;
+      height: auto;
+      display: block;
+      margin: 0 auto;
+      border-radius: 6px;
+      border: 1px solid #e4e4e4;
+    }
+    .paradigm .cap {
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.9rem;
+      margin-top: 0.7rem;
+      line-height: 1.55;
+    }
+    .paradigm .cap b { color: var(--ink); }
+
     /* ---------- Teaser ---------- */
     .teaser { margin: 2.2rem 0 0; }
     .teaser img {
@@ -172,8 +191,19 @@
       background: var(--panel);
       border: 1px solid #e4e4e4;
       border-radius: 10px;
-      padding: 1.3rem 1.4rem;
+      padding: 0 0 1.3rem;
+      overflow: hidden;
     }
+    .impact .impact-img {
+      display: block;
+      width: 100%;
+      height: 118px;
+      object-fit: cover;
+      object-position: center 22%;
+      border-bottom: 1px solid #e4e4e4;
+      background: #fff;
+    }
+    .impact .impact-body { padding: 1.1rem 1.4rem 0; }
     .impact .impact-num {
       font-family: 'CMU Serif', Georgia, serif;
       font-weight: 900;
@@ -272,10 +302,11 @@
 <section class="hero">
   <div class="container has-text-centered">
     <h1 class="publication-title">Morphogenetic <strong>Bi-Modal Networks</strong></h1>
-    <p class="publication-sub">Weights say <em>how strongly</em>; angles say <em>where</em>. Every neuron
-      carries a 3D angle channel that multiplies the weight channel — the network learns physical laws from
-      noisy local observations with <b>no global loss and no backpropagation</b>, and its shape self-organizes
-      into a readable, mechanistic map of what it learned.</p>
+    <p class="publication-sub">A neural network whose neurons carry <strong>angles</strong>, not just
+      weights. Weights say <em>how strongly</em>; angles say <em>where</em> — and the two multiply into the
+      connection. The network learns physical laws from noisy local observations with <b>no global loss and no
+      backpropagation</b>, and its angles self-organize into a <strong>shape</strong>: a readable, mechanistic
+      map of what it learned. <em>Angles are the computation; the shape is the interpretable spectrum.</em></p>
     <p class="publication-authors">Sehaj Singh</p>
     <p class="publication-venue">Research prototype &middot; gradient-free local learning &middot; 2026</p>
 
@@ -297,6 +328,19 @@
         Live demo
       </a>
     </div>
+  </div>
+</section>
+
+<!-- ================= PARADIGM (the angles figure) ================= -->
+<section class="paradigm">
+  <div class="container">
+    <img src="figs/fig_paradigm.png" alt="The angle paradigm in three panels: (a) two channels per neuron - scalar weights for strength and a 3D angle for direction; (b) the angle modulation kappa = w*c*(vhat_i dot vhat_j) with measured readback - the shape reads the law at r=0.67 vs r=0.26 for raw weights; (c) morphogenesis - the geometry grows into the hidden law and routes a token to the goal">
+    <p class="cap"><b>The paradigm shift is the angle channel.</b> Weights are not enough — they say <em>how
+      strongly</em> but nothing about <em>where</em>. Every neuron in this network carries a 3D angle that
+      multiplies the weight channel (panel a); alignment steers the connection (panel b); and the geometry that
+      self-organizes is a <em>readable shape</em> — a mechanistic map of the learned law that routes real
+      computation through the material (panel c). <b>Angles are the computation; the shape is the interpretable
+      spectrum.</b></p>
   </div>
 </section>
 
@@ -338,9 +382,10 @@
         </p>
       </div>
     </div>
-    <p class="tldr"><strong>TL;DR:</strong> a neural network with two compute channels — scalar weights (strength)
-      and 3D angles (direction). It learns laws from noisy streaming observations with no backprop, its shape
-      grows into a readable map of the law, and it plays a maze it never saw. Every number on this page is
+    <p class="tldr"><strong>TL;DR:</strong> we use angles now. A neural network with two compute channels —
+      scalar weights (strength) and 3D angles (direction) — where the angles multiply the weights into the
+      connection. It learns laws from noisy streaming observations with no backprop, its angles grow into a
+      readable shape — a map of the law — and it plays a maze it never saw. Every number on this page is
       measured and reproduced from the committed result files.</p>
   </div>
 </section>
@@ -352,51 +397,72 @@
     <div class="content has-text-justified">
       <p>Modern deep learning is a <em>data-center</em> computation: training needs a global loss, a backward
         pass, and a GPU farm — then the trained weights are shipped to a device that can only run them, never
-        learn. This architecture is built the other way around. Every update is strictly local and streaming,
-        so the same network that uses the world can <em>learn from it</em>, continuously, where it lives. The
-        measured capabilities below are the directions this opens — each card pairs a measured result with the
-        world it points at.</p>
+        learn. It is also a <em>scalar</em> computation: a weight is a number, so a network is a bag of numbers
+        — inscrutable until someone attaches a microscope to it. This architecture is built the other way
+        around: every neuron carries an <strong>angle</strong>, the angles are computation, and the geometry
+        they form is the mechanism you can read. Every update is strictly local and streaming, so the same
+        network that uses the world can <em>learn from it</em>, continuously, where it lives. The measured
+        capabilities below are the directions this opens — each card pairs a measured result with the world it
+        points at.</p>
     </div>
     <div class="impact-grid">
       <div class="impact">
-        <div class="impact-num">No backprop</div>
-        <h4>Learning where it lives</h4>
-        <p>No global loss, no backward pass, no label. A robot, sensor, or phone could learn from its own stream
-          of experience — <b>forever, on-device, in real time</b> — instead of shipping data to a cluster and
-          weights back.</p>
+        <img class="impact-img" src="figs/fig2_learning_curves.png" alt="Learning curves: streaming weak form converges to 0.038 NMSE with no backprop">
+        <div class="impact-body">
+          <div class="impact-num">No backprop</div>
+          <h4>Learning where it lives</h4>
+          <p>No global loss, no backward pass, no label. A robot, sensor, or phone could learn from its own
+            stream of experience — <b>forever, on-device, in real time</b> — instead of shipping data to a
+            cluster and weights back.</p>
+        </div>
       </div>
       <div class="impact">
-        <div class="impact-num">10⁴ nodes &middot; ~0.1 s/step</div>
-        <h4>Compute you can hold</h4>
-        <p>10,000 nodes learn at ~0.1 seconds per step on a laptop CPU, with ~630&times; less memory than a
-          reservoir. <b>Learning without a GPU</b> — the compute that currently gates who gets to train AI.</p>
+        <img class="impact-img" src="figs/fig8_scaling_large.png" alt="Scaling to 10,000 nodes: identification improves, memory advantage grows to 630x">
+        <div class="impact-body">
+          <div class="impact-num">10⁴ nodes &middot; ~0.1 s/step</div>
+          <h4>Compute you can hold</h4>
+          <p>10,000 nodes learn at ~0.1 seconds per step on a laptop CPU, with ~630&times; less memory than a
+            reservoir. <b>Learning without a GPU</b> — the compute that currently gates who gets to train AI.</p>
+        </div>
       </div>
       <div class="impact">
-        <div class="impact-num">The shape is the readout</div>
-        <h4>Mechanistic interpretability by construction</h4>
-        <p>You <b>watch what it learned</b> — the geometry grows into the law (r = 0.64 vs 0.35 for raw
-          weights). For safety-critical AI, inspectability is the architecture, not a post-hoc tool.</p>
+        <img class="impact-img" src="figs/fig3_readback.png" alt="The shape reads back the law at r=0.64 vs r=0.35 for the raw weights">
+        <div class="impact-body">
+          <div class="impact-num">The shape is the readout</div>
+          <h4>Mechanistic interpretability by construction</h4>
+          <p>You <b>watch what it learned</b> — the geometry grows into the law (r = 0.64 vs 0.35 for raw
+            weights). For safety-critical AI, inspectability is the architecture, not a post-hoc tool.</p>
+        </div>
       </div>
       <div class="impact">
-        <div class="impact-num">481× &amp; 22× below FD</div>
-        <h4>Laws from noisy, sparse data</h4>
-        <p>Two real physical records — solar activity and El Ni&ntilde;o — identified at 481&times; and
-          22&times; lower holdout error than finite differences, <b>flat under 50% added noise</b>, and
-          5.3&times; better than a trained LSTM at 10% of the data. Climate, materials, biology: the law
-          extraction regimes where data is scarce and dirty.</p>
+        <img class="impact-img" src="figs/fig7_realdat.png" alt="Real-data validation on the 277-year sunspot record: holdout law-fit, noise robustness, forecasts">
+        <div class="impact-body">
+          <div class="impact-num">481× &amp; 22× below FD</div>
+          <h4>Laws from noisy, sparse data</h4>
+          <p>Two real physical records — solar activity and El Ni&ntilde;o — identified at 481&times; and
+            22&times; lower holdout error than finite differences, <b>flat under 50% added noise</b>, and
+            5.3&times; better than a trained LSTM at 10% of the data. Climate, materials, biology: the law
+            extraction regimes where data is scarce and dirty.</p>
+        </div>
       </div>
       <div class="impact">
-        <div class="impact-num">A substrate, not just software</div>
-        <h4>Designed to be what a material does</h4>
-        <p>Strictly local, O(E)-per-step updates are the update rule of <b>physical hardware</b> — analog
-          circuits, neuromorphic chips. This is the paper's roadmap: the same weak form, running on real
-          voltages.</p>
+        <img class="impact-img" src="figs/fig6_routing.png" alt="Steady-state routing: the learned shape redirects flux from source to sink">
+        <div class="impact-body">
+          <div class="impact-num">A substrate, not just software</div>
+          <h4>Designed to be what a material does</h4>
+          <p>Strictly local, O(E)-per-step updates are the update rule of <b>physical hardware</b> — analog
+            circuits, neuromorphic chips. This is the paper's roadmap: the same weak form, running on real
+            voltages.</p>
+        </div>
       </div>
       <div class="impact">
-        <div class="impact-num">One law, two worlds</div>
-        <h4>Generalization as a property, not a hope</h4>
-        <p>The identical identifier — unmodified — transfers across two independent physical systems and routes
-          a maze it never saw at exactly oracle-level steps. <b>Transfer measured, not assumed.</b></p>
+        <img class="impact-img" src="figs/fig9_enso.png" alt="Second real benchmark: NINO3.4 El Nino SST - at 10% of the data the law beats the trained LSTM 5.3x">
+        <div class="impact-body">
+          <div class="impact-num">One law, two worlds</div>
+          <h4>Generalization as a property, not a hope</h4>
+          <p>The identical identifier — unmodified — transfers across two independent physical systems and
+            routes a maze it never saw at exactly oracle-level steps. <b>Transfer measured, not assumed.</b></p>
+        </div>
       </div>
     </div>
     <div class="content has-text-justified">
@@ -646,7 +712,8 @@ python real_benchmark.py --dataset sunspot --out real_benchmark.json
 python real_benchmark.py --dataset enso    --out real_benchmark_enso.json
 python theory.py
 python flowgame.py --episodes 4 --out game           # the maze game + animated clip
-python make_figures.py
+python make_figures.py                               # paper figures 1-9
+python make_paradigm_fig.py                          # the angle-paradigm hero figure
 python test_biomaterial_net.py                       # 12 sanity tests</pre>
     <div class="content has-text-justified">
       <p>See the <a href="https://github.com/sehajr-singhs/morphogenetic-bimodal-networks">repository</a> for
