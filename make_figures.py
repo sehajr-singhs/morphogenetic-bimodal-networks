@@ -92,7 +92,7 @@ ax.set_xlabel("x (grid units)"); ax.set_ylabel("y")
 fig.suptitle("Figure 1 | The bi-modal morphogenetic network: chemistry imprints "
              "a corridor, angles encode it as a readable shape")
 fig.tight_layout(rect=[0, 0, 1, 0.94])
-fig.savefig(f"{OUT}/fig1_architecture.png", dpi=150)
+fig.savefig(f"{OUT}/fig1_architecture.png", dpi=150, bbox_inches="tight")
 plt.close(fig)
 
 # ---- Fig 2: learning curves
@@ -143,7 +143,7 @@ ax.set_ylim(0.4, 1.02)
 fig.suptitle("Figure 2 | Streaming identification at 5% observational noise "
              "and self-organized morphogenesis")
 fig.tight_layout(rect=[0, 0, 1, 0.94])
-fig.savefig(f"{OUT}/fig2_learning_curves.png", dpi=150)
+fig.savefig(f"{OUT}/fig2_learning_curves.png", dpi=150, bbox_inches="tight")
 plt.close(fig)
 
 # ---- Fig 3: read-back scatter (shape vs weights vs law)
@@ -171,7 +171,7 @@ ax.set_title("(c) Shape vs weights\n"
 fig.suptitle("Figure 3 | The shape is the denoised spatial readout of the law\n"
              "(seed 0; 15-seed means in the manuscript)")
 fig.tight_layout(rect=[0, 0, 1, 0.92])
-fig.savefig(f"{OUT}/fig3_readback.png", dpi=150)
+fig.savefig(f"{OUT}/fig3_readback.png", dpi=150, bbox_inches="tight")
 plt.close(fig)
 
 # ---- Fig 4: ablation bar chart
@@ -196,7 +196,7 @@ bars(axes[2], "corr_focus", "corridor contrast", "(c) Chemical gate makes the\ns
 fig.suptitle("Figure 4 | Ablation: each mechanism earns its place\n"
              "(8 seeds per variant)")
 fig.tight_layout(rect=[0, 0, 1, 0.9])
-fig.savefig(f"{OUT}/fig4_ablation.png", dpi=150)
+fig.savefig(f"{OUT}/fig4_ablation.png", dpi=150, bbox_inches="tight")
 plt.close(fig)
 
 # ---- Fig 5: scaling
@@ -233,7 +233,7 @@ ax.set_title("(c) Memory advantage holds\n(~590x)")
 fig.suptitle("Figure 5 | Scaling with constant excitation power density "
              "(5 seeds per size)")
 fig.tight_layout(rect=[0, 0, 1, 0.9])
-fig.savefig(f"{OUT}/fig5_scaling.png", dpi=150)
+fig.savefig(f"{OUT}/fig5_scaling.png", dpi=150, bbox_inches="tight")
 plt.close(fig)
 
 # ---- Fig 6: routing (Dirichlet probe) map
@@ -258,7 +258,7 @@ for ax, title in [(axes[0], "(a) Potential field, learned geometry"),
 fig.suptitle("Figure 6 | Steady-state routing: the learned shape redirects "
              "flux (source NW, sink SE)")
 fig.tight_layout(rect=[0, 0, 1, 0.92])
-fig.savefig(f"{OUT}/fig6_routing.png", dpi=150)
+fig.savefig(f"{OUT}/fig6_routing.png", dpi=150, bbox_inches="tight")
 plt.close(fig)
 
 # ---------------------------------------------------------------- Fig 7:
@@ -344,7 +344,7 @@ ax.legend(fontsize=7)
 fig.suptitle("Figure 7 | Real-data validation: SILSO sunspot benchmark "
              "(3331 months, 1749-2026; law frozen after training)")
 fig.tight_layout(rect=[0, 0, 1, 0.9])
-fig.savefig(f"{OUT}/fig7_realdat.png", dpi=150)
+fig.savefig(f"{OUT}/fig7_realdat.png", dpi=150, bbox_inches="tight")
 plt.close(fig)
 
 # ---------------------------------------------------------------- Fig 8:
@@ -396,7 +396,7 @@ ax.set_title("(d) Per-node cost stays flat\n(sublinear scaling)")
 fig.suptitle("Figure 8 | The material at 10^4 nodes (sparse warm-started "
              "CG plant solver; 3 seeds per size)")
 fig.tight_layout(rect=[0, 0, 1, 0.9])
-fig.savefig(f"{OUT}/fig8_scaling_large.png", dpi=150)
+fig.savefig(f"{OUT}/fig8_scaling_large.png", dpi=150, bbox_inches="tight")
 plt.close(fig)
 
 # ---------------------------------------------------------------- Fig 9:
@@ -482,7 +482,7 @@ ax.legend(fontsize=7)
 fig.suptitle("Figure 9 | Second real benchmark: NINO3.4 El Nino SST "
              "anomalies (943 months, 1948-2026; NOAA/PSL)")
 fig.tight_layout(rect=[0, 0, 1, 0.9])
-fig.savefig(f"{OUT}/fig9_enso.png", dpi=150)
+fig.savefig(f"{OUT}/fig9_enso.png", dpi=150, bbox_inches="tight")
 plt.close(fig)
 
 print(f"figures written to {OUT}/")

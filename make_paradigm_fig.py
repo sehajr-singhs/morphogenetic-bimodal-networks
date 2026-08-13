@@ -1,16 +1,17 @@
 """make_paradigm_fig.py -- the CROWN-style 3-panel "angle paradigm" figure.
 
-Three panels, each with a diagram above and a bold label below (the
-α/β-CROWN layout the site's hero figure follows):
+Each panel is a real matplotlib axes: a clean network schematic, proper
+data plots with axes and labels, and the real Flowrunner game output.
+A bold CROWN-style label sits below each panel.
 
   (a) THE PARADIGM  -- two channels of computation per neuron: scalar
-      weights (strength) and 3D angles (direction). Weights say how
-      strongly; angles say where.
+      weights (strength) and 3D angles (direction).
   (b) THE MODULATION -- the angle factor kappa = w*c*(vhat_i . vhat_j):
-      how alignment steers the effective coupling, with the measured
-      read-back (shape vs law, weights vs law) from a real game episode.
-  (c) THE SHAPE -- morphogenesis on real Flowrunner output: the geometry
-      grows along the hidden law and routes a token through it.
+      how alignment steers the effective coupling, and the measured
+      read-back (shape vs law, weights vs law) from the paper's
+      controlled grid run.
+  (c) THE SHAPE -- real Flowrunner output: the geometry grows along the
+      hidden law and routes a token through it.
 
 Usage:  python make_paradigm_fig.py [--out figs]
 """
@@ -22,7 +23,6 @@ import numpy as np
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-from matplotlib.patches import FancyArrowPatch
 
 OUT = sys.argv[sys.argv.index("--out") + 1] if "--out" in sys.argv else "figs"
 os.makedirs(OUT, exist_ok=True)
@@ -30,69 +30,72 @@ os.makedirs(OUT, exist_ok=True)
 plt.rcParams.update({
     "font.family": "serif",
     "font.serif": ["DejaVu Serif", "Times New Roman", "Georgia"],
-    "axes.edgecolor": "#333333",
+    "font.size": 11,
+    "axes.edgecolor": "#444444",
     "axes.labelcolor": "#111111",
     "xtick.color": "#444444",
     "ytick.color": "#444444",
     "text.color": "#111111",
+    "axes.linewidth": 1.0,
 })
 
-BLUE = "#226999"      # angle channel / shape
+BLUE = "#226999"
 INK = "#1a1a1a"
-GRAY = "#8c8e90"
-CORAL = "#d95f5f"
+GRAY = "#9a9c9e"
+CORAL = "#c94f4f"
 
 
 # ---------------------------------------------------------------- panel (a)
 def panel_paradigm(ax):
-    """Schematic: one neuron carries BOTH a scalar weight and a 3D angle."""
-    ax.set_xlim(-0.5, 7.4)
-    ax.set_ylim(-0.4, 4.6)
-    ax.axis("off")
+    """A clean schematic that fills the panel: a 2x3 neuron grid, each with
+    a weight to its neighbors AND a 3D angle vector. Weights: line width.
+    Angles: arrows. The composition callout sits below the grid."""
+    # data ranges chosen to match the panel's aspect so the drawing fills it
+    ax.set_xlim(-1.15, 4.25)
+    ax.set_ylim(-1.35, 4.10)
+    ax.set_aspect("equal")
+    ax.set_xticks([])
+    ax.set_yticks([])
+    for s in ax.spines.values():
+        s.set_visible(False)
 
-    # three neurons in a row
-    xs = np.array([1.0, 3.4, 5.8])
-    ys = np.array([1.2, 2.6, 1.2])
-    vhat = np.array([[0.96, 0.28], [-0.35, 0.94], [0.85, -0.53]])
+    # 2x3 neuron grid (spread to fill the panel)
+    xs = np.array([0.0, 1.7, 3.4, 0.0, 1.7, 3.4])
+    ys = np.array([2.9, 2.9, 2.9, 0.9, 0.9, 0.9])
+    vhat = np.array([[0.94, 0.34], [0.36, 0.93], [-0.60, 0.80],
+                     [0.90, -0.44], [-0.20, -0.98], [0.72, 0.70]])
 
-    # edges: weight channel (thickness) + angle factor (alignment)
-    for (x1, y1, v1), (x2, y2, v2) in zip(
-            zip(xs[:-1], ys[:-1], vhat[:-1]),
-            zip(xs[1:], ys[1:], vhat[1:])):
-        align = float(np.dot(v1, v2))
-        lw = 1.0 + 3.2 * max(align, 0.0)
-        ax.plot([x1, x2], [y1, y2], color=INK, lw=lw, zorder=1,
-                alpha=0.85)
-        mx, my = (x1 + x2) / 2, (y1 + y2) / 2 + 0.42
-        ax.text(mx, my, f"w = {1.0 + 0.5 * align:.1f}", ha="center",
-                fontsize=9, color=INK)
-        ax.text(mx, my - 0.42, f"v\u0302\u1d62\u00b7v\u0302\u2c7c = {align:+.2f}",
-                ha="center", fontsize=9, color=BLUE)
+    # edges (horizontal + vertical) with width = weight
+    edges = [(0, 1), (1, 2), (3, 4), (4, 5), (0, 3), (1, 4), (2, 5)]
+    wgt = np.array([1.0, 0.55, 0.8, 1.0, 0.45, 0.9, 0.6])
+    for (i, j), w in zip(edges, wgt):
+        ax.plot([xs[i], xs[j]], [ys[i], ys[j]], color="#b9bbbd",
+                lw=0.5 + 2.4 * w, zorder=1, solid_capstyle="round")
 
-    # neurons with their angle vectors
+    # neurons + angle arrows
     for (x, y, v) in zip(xs, ys, vhat):
-        ax.add_patch(plt.Circle((x, y), 0.34, facecolor="white",
-                                edgecolor=INK, lw=1.6, zorder=3))
-        ax.arrow(x, y, v[0] * 0.62, v[1] * 0.62, head_width=0.13,
-                 head_length=0.15, fc=CORAL, ec=CORAL, zorder=4, lw=1.8)
-    # the angle channel label
-    ax.text(xs[1], ys[1] + 0.62, "v\u0302\u1d62 (3D angle)", ha="center",
-            fontsize=10, color=CORAL, fontweight="bold")
+        ax.add_patch(plt.Circle((x, y), 0.30, facecolor="#f4f6f8",
+                                edgecolor=INK, lw=1.4, zorder=3))
+        ax.annotate("", xy=(x + v[0] * 0.58, y + v[1] * 0.58),
+                    xytext=(x, y),
+                    arrowprops=dict(arrowstyle="-|>", color=CORAL,
+                                    lw=2.0, mutation_scale=14), zorder=4)
 
-    # two-channel strips
-    ax.text(-0.35, 0.35, "WEIGHT channel", rotation=90, ha="center",
-            va="center", fontsize=9, color=INK)
-    ax.text(-0.35, 3.6, "ANGLE channel", rotation=90, ha="center",
-            va="center", fontsize=9, color=CORAL, fontweight="bold")
+    # legend: weight line + angle arrow (top band)
+    ax.plot([-0.55, 0.0], [3.85, 3.85], color="#b9bbbd", lw=3.0,
+            solid_capstyle="round")
+    ax.text(0.07, 3.85, r"weight $w_{ij}$ (strength)", va="center",
+            fontsize=10)
+    ax.annotate("", xy=(-0.55 + 0.5, 3.55), xytext=(-0.55, 3.55),
+                arrowprops=dict(arrowstyle="-|>", color=CORAL, lw=2.0,
+                                mutation_scale=13))
+    ax.text(0.07, 3.55, r"angle $\hat{v}_i$ (direction)", va="center",
+            fontsize=10)
 
-    # the composition
-    ax.text(3.6, 4.28, r"$\kappa_{ij} = w_{ij}\,c_{ij}\,(\hat{v}_i\cdot\hat{v}_j)$",
-            ha="center", fontsize=13.5, color=INK)
-    ax.add_patch(FancyArrowPatch((3.6, 3.62), (3.6, 2.9),
-                                 arrowstyle="-|>", mutation_scale=16,
-                                 color=GRAY, lw=1.4))
-    ax.text(3.6, 0.55, "strength  \u00d7  direction  =  the connection",
-            ha="center", fontsize=9.5, color=GRAY, style="italic")
+    # composition callout (bottom band)
+    ax.text(1.7, -0.85, r"$\kappa_{ij} = w_{ij}\,c_{ij}\,"
+            r"(\hat{v}_i\cdot\hat{v}_j)$", ha="center", fontsize=13,
+            color=INK)
 
 
 # ---------------------------------------------------------------- panel (b)
@@ -109,59 +112,67 @@ def representative_grid(seed=0, T=3000):
 
 
 def panel_modulation(ax, ep):
-    """Angle factor curve (left) + measured read-back (right)."""
-    ax.set_xlim(0, 2.0)
-    ax.set_ylim(0, 1.0)
+    """Two real subplots inside the panel: (left) the alignment factor
+    cos(theta); (right) measured read-back: shape vs law and weights vs
+    law, each with its regression line and Pearson r."""
     ax.axis("off")
+    ax.set_xlim(0, 1)
+    ax.set_ylim(0, 1)
 
-    # left: the alignment factor
-    th = np.linspace(0, np.pi, 300)
-    ax.plot([0, 0.88], [0.78, 0.78], color=GRAY, lw=1.0)
-    ax.plot([0, 0.88], [0.22, 0.22], color=GRAY, lw=1.0)
-    ax.plot(th / np.pi * 0.88, 0.5 + 0.28 * np.cos(th), color=BLUE, lw=2.4)
-    ax.axvline(0.0, color=INK, lw=1.0)
-    ax.text(0.44, 0.88, "alignment  cos \u03b8", ha="center", fontsize=10,
-            color=INK)
-    ax.text(0.02, 0.52, "+1  aligned", fontsize=8.5, color=BLUE)
-    ax.text(0.60, 0.185, "0  perpendicular", fontsize=8.5, color=BLUE)
-    ax.text(0.02, 0.10, "\u03b8 = 0", fontsize=8, color=GRAY)
-    ax.text(0.79, 0.10, "\u03b8 = \u03c0", fontsize=8, color=GRAY)
-    # two little vector pairs
-    for (cx, ang, lab) in [(0.44, 0.0, "aligned"), (0.44, 1.4, "weak")]:
-        pass
-    # arrow to measured panel
-    ax.annotate("", xy=(1.02, 0.5), xytext=(0.90, 0.5),
-                arrowprops=dict(arrowstyle="-|>", color=GRAY, lw=1.5))
+    # ------- left: the coupling factor curve -------
+    lax = ax.inset_axes([0.0, 0.06, 0.44, 0.88])
+    th = np.linspace(0, np.pi, 400)
+    lax.plot(th, np.cos(th), color=BLUE, lw=2.4)
+    lax.fill_between(th, np.cos(th), 0, where=np.cos(th) > 0,
+                     color=BLUE, alpha=0.12)
+    lax.axhline(0, color="#555", lw=0.8)
+    lax.axvline(0, color="#555", lw=0.8)
+    lax.annotate("aligned\n(+1)", xy=(0.05, 1.0), xytext=(0.35, 0.85),
+                 fontsize=9, color=INK,
+                 arrowprops=dict(arrowstyle="->", color="#666", lw=1.0))
+    lax.annotate("perpendicular\n(0)", xy=(np.pi / 2, 0.0),
+                 xytext=(1.55, 0.45), fontsize=9, color=INK,
+                 arrowprops=dict(arrowstyle="->", color="#666", lw=1.0))
+    lax.set_xlim(0, np.pi)
+    lax.set_ylim(-1.15, 1.2)
+    lax.set_xticks([0, np.pi / 2, np.pi])
+    lax.set_xticklabels(["0", r"$\pi/2$", r"$\pi$"])
+    lax.set_xlabel(r"angle $\theta$ between $\hat{v}_i$, $\hat{v}_j$",
+                   fontsize=9)
+    lax.set_ylabel(r"coupling factor  $\hat{v}_i\!\cdot\!\hat{v}_j$",
+                   fontsize=9)
+    lax.tick_params(labelsize=8)
+    lax.set_title("alignment steers the connection", fontsize=10, pad=4)
 
-    # right: measured read-back (paper's controlled 7x7 grid run)
+    # arrow between the two
+    ax.annotate("", xy=(0.50, 0.5), xytext=(0.455, 0.5),
+                arrowprops=dict(arrowstyle="-|>", color=GRAY, lw=1.6))
+
+    # ------- right: measured read-back (paper's grid run) -------
+    rax = ax.inset_axes([0.54, 0.06, 0.46, 0.88])
     grid_net = representative_grid()
     kappa_g, a_g, _, _ = grid_net._compute_kappa()
     w = grid_net._w
-    kappa = kappa_g
-    a_ij = a_g
-    r_a = np.corrcoef(a_ij, kappa)[0, 1]
-    r_w = np.corrcoef(w, kappa)[0, 1]
-    ax.plot([1.22, 1.98], [0.78, 0.78], color=GRAY, lw=1.0)
-    ax.plot([1.22, 1.98], [0.22, 0.22], color=GRAY, lw=1.0)
-    rng = np.random.default_rng(3)
-    n = min(len(kappa), 220)
-    idx = rng.choice(len(kappa), n, replace=False)
-    ax.scatter(1.22 + (kappa[idx] - kappa.min()) /
-               (kappa.max() - kappa.min()) * 0.76,
-               0.5 + 0.28 * (a_ij[idx] - a_ij.min()) /
-               max(a_ij.max() - a_ij.min(), 1e-12) * 2.0 - 0.28,
-               s=8, alpha=0.65, color=BLUE, lw=0)
-    ax.scatter(1.22 + (kappa[idx] - kappa.min()) /
-               (kappa.max() - kappa.min()) * 0.76,
-               0.5 + 0.28 * (w[idx] - w.min()) /
-               max(w.max() - w.min(), 1e-12) * 2.0 - 0.28,
-               s=8, alpha=0.5, color=GRAY, lw=0)
-    ax.text(1.6, 0.90, "measured read-back", ha="center", fontsize=10,
-            color=INK)
-    ax.text(1.26, 0.665, f"shape vs law   r = {r_a:.2f}", fontsize=9,
-            color=BLUE, fontweight="bold")
-    ax.text(1.26, 0.30, f"weights vs law  r = {r_w:.2f}", fontsize=9,
-            color=GRAY)
+    rng = np.random.default_rng(0)
+    n = min(len(kappa_g), 140)
+    idx = rng.choice(len(kappa_g), n, replace=False)
+
+    def regline(x, y, col, lab, r):
+        p = np.polyfit(x, y, 1)
+        xx = np.linspace(x.min(), x.max(), 50)
+        rax.plot(xx, np.polyval(p, xx), color=col, lw=1.6, alpha=0.85)
+        rax.scatter(x, y, s=16, alpha=0.7, color=col, edgecolors="none",
+                    label=f"{lab}  (r = {r:.2f})")
+
+    regline(kappa_g[idx], a_g[idx], BLUE, "shape $a_{ij}$",
+            np.corrcoef(a_g, kappa_g)[0, 1])
+    regline(kappa_g[idx], w[idx], GRAY, "weights $w_{ij}$",
+            np.corrcoef(w, kappa_g)[0, 1])
+    rax.set_xlabel(r"true law  $\kappa$", fontsize=9)
+    rax.set_ylabel("read-back (a.u.)", fontsize=9)
+    rax.tick_params(labelsize=8)
+    rax.legend(fontsize=8, frameon=True, loc="upper left")
+    rax.set_title("measured: the shape reads the law", fontsize=10, pad=4)
 
 
 # ---------------------------------------------------------------- panel (c)
@@ -177,24 +188,25 @@ def panel_shape(ax, ep):
     ax.set_xlim(-0.6, env.nx - 0.4)
     ax.set_ylim(-0.6, env.ny - 0.4)
     ax.set_aspect("equal")
-    ax.tripcolor(pos[:, 0], pos[:, 1], vals, shading="gouraud",
-                 cmap="inferno", vmin=np.percentile(vals, 5),
-                 vmax=np.percentile(vals, 95))
-    ax.plot(env.path[:, 0], env.path[:, 1], "w--", lw=1.8, alpha=0.95,
-            label="hidden law")
-    p = np.array(ep["path"])
-    ax.plot(pos[p, 0], pos[p, 1], color=CORAL, lw=2.4, alpha=0.95,
-            label="token path")
-    ax.scatter([pos[env.entry, 0]], [pos[env.entry, 1]], marker="o",
-               s=90, facecolor="white", edgecolor=INK, zorder=5)
-    ax.scatter([pos[env.goal, 0]], [pos[env.goal, 1]], marker="*",
-               s=260, facecolor="gold", edgecolor=INK, zorder=5)
     ax.set_xticks([])
     ax.set_yticks([])
-    ax.legend(fontsize=8, loc="lower left", framealpha=0.85)
-    ax.set_title(f"steps to goal: {ep['steps']}  "
-                 f"(oracle {ep.get('oracle', '--')})", fontsize=9.5,
-                 color=INK, pad=4)
+    tcf = ax.tripcolor(pos[:, 0], pos[:, 1], vals, shading="gouraud",
+                       cmap="viridis",
+                       vmin=np.percentile(vals, 2),
+                       vmax=np.percentile(vals, 98))
+    ax.plot(env.path[:, 0], env.path[:, 1], "w--", lw=2.2, alpha=1.0,
+            label="hidden law")
+    p = np.array(ep["path"])
+    ax.plot(pos[p, 0], pos[p, 1], color=CORAL, lw=2.6, alpha=1.0,
+            label="token path")
+    ax.scatter([pos[env.entry, 0]], [pos[env.entry, 1]], marker="o",
+               s=120, facecolor="white", edgecolor=INK, lw=1.2, zorder=5)
+    ax.scatter([pos[env.goal, 0]], [pos[env.goal, 1]], marker="*",
+               s=320, facecolor="gold", edgecolor=INK, lw=1.2, zorder=5)
+    ax.legend(fontsize=8, loc="lower left", framealpha=0.9)
+    ax.set_title(f"steps to goal: {ep['steps']}  (oracle "
+                 f"{ep.get('oracle', '--')})", fontsize=10, pad=4)
+    return tcf
 
 
 # ---------------------------------------------------------------- figure
@@ -204,22 +216,23 @@ def main():
     ep["a_ij"] = ep["a_ij"] if "a_ij" in ep else ep["net"]._compute_kappa()[1]
     ep["oracle"] = fg.route_oracle(ep["env"])[0]
 
-    fig = plt.figure(figsize=(16.5, 5.6))
-    gs = fig.add_gridspec(1, 3, wspace=0.42, left=0.02, right=0.98,
-                          top=0.92, bottom=0.10)
+    fig = plt.figure(figsize=(16.5, 5.8))
+    gs = fig.add_gridspec(1, 3, wspace=0.28, left=0.045, right=0.985,
+                          top=0.90, bottom=0.155)
 
     labels = [
         "(a) THE PARADIGM\nweights say how strongly, angles say where",
-        "(b) THE MODULATION\n\u03ba = w\u00b7c\u00b7(v\u0302\u1d62\u00b7v\u0302\u2c7c): "
-        "the angle steers the connection",
+        "(b) THE MODULATION\n"
+        r"$\kappa = w\,c\,(\hat{v}_i\cdot\hat{v}_j)$ — the angle steers "
+        "the connection",
         "(c) THE SHAPE\nthe geometry grows into the law it learned",
     ]
     for axg, lab in zip(gs, labels):
         ax = fig.add_subplot(axg)
-        ax.text(0.5, -0.06, lab, transform=ax.transAxes, ha="center",
-                va="top", fontsize=11.5, color=INK, fontweight="bold",
-                linespacing=1.35)
         ax.axis("off")
+        ax.text(0.5, -0.045, lab, transform=ax.transAxes, ha="center",
+                va="top", fontsize=11.5, color=INK, fontweight="bold",
+                linespacing=1.25)
 
     panel_paradigm(fig.add_subplot(gs[0]))
     panel_modulation(fig.add_subplot(gs[1]), ep)
