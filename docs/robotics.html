@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="description" content="The Operations Data Flywheel: streaming weak-form laws for industrial robotics — no backpropagation, no batches. Identified laws feed feedforward computation, re-adapt to payload change in one lap, and make the fleet readable.">
+  <meta name="keywords" content="robotics, industrial AI, data flywheel, system identification, weak form, no backpropagation, Mind Robotics, Rivian, online learning">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>The Operations Data Flywheel — streaming laws for industrial robotics</title>
+
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/computer-modern/cmu-serif.css">
+  <script>
+    MathJax = {
+      tex: {
+        inlineMath: [['\\(', '\\)']],
+        displayMath: [['\\[', '\\]']]
+      }
+    };
+  </script>
+  <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+
+  <style>
+    :root {
+      --ink: #1a1a1a;
+      --muted: #555;
+      --faint: #8c8e90;
+      --panel: #f8f8f8;
+      --border: #c4c6c8;
+      --link: #226999;
+      --accent: #1a1a1a;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { background: #fff; }
+    body {
+      font-family: 'CMU Serif', Georgia, serif;
+      font-weight: 500;
+      color: var(--ink);
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+    }
+    a { color: var(--link); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    a:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; border-radius: 2px; }
+
+    .container { max-width: 920px; margin: 0 auto; padding: 0 20px; }
+    .has-text-centered { text-align: center; }
+    .has-text-justified { text-align: justify; }
+
+    /* ---------- Hero ---------- */
+    .hero { padding: 4.2rem 0 1.6rem; }
+    .publication-title {
+      font-family: 'CMU Serif', Georgia, serif;
+      font-weight: 700 !important;
+      line-height: 1.12;
+      letter-spacing: 0;
+      font-size: 2.6rem;
+      text-wrap: balance;
+    }
+    .publication-title strong { font-weight: 900 !important; }
+    .publication-sub {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.98rem;
+      color: var(--faint);
+      margin-top: 0.9rem;
+      line-height: 1.6;
+    }
+    .publication-authors { margin-top: 1.2rem; font-size: 1.02rem; color: var(--ink); }
+    .publication-venue { font-size: 0.85rem; color: var(--faint); margin-top: 0.2rem; }
+    .back-link { display: block; text-align: center; font-family: 'IBM Plex Mono', monospace; font-size: 0.85rem; margin-top: 1.4rem; }
+
+    /* ---------- Buttons ---------- */
+    .publication-links { margin-top: 1.5rem; display: flex; flex-wrap: wrap; justify-content: center; gap: 0.6rem; }
+    .external-link.button {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.88rem;
+      font-weight: 400;
+      letter-spacing: 0.03em;
+      border-radius: 8px;
+      padding: 0.55em 1.2em;
+      transition: background-color 0.15s ease, color 0.15s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5em;
+      background-color: var(--panel);
+      border: none;
+      color: var(--faint);
+      text-decoration: none;
+      border: 1px solid transparent;
+    }
+    .external-link.button:hover { background-color: #eeeeee; color: var(--faint); }
+    .external-link.button .icon { display: inline-flex; }
+    .external-link.button svg { width: 15px; height: 15px; fill: currentColor; }
+
+    /* ---------- Paradigm hero figure ---------- */
+    .paradigm { margin: 2.4rem auto 0; max-width: 1000px; }
+    .paradigm img {
+      width: 100%;
+      height: auto;
+      display: block;
+      margin: 0 auto;
+      border-radius: 6px;
+      border: 1px solid #e4e4e4;
+    }
+    .paradigm .cap {
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.9rem;
+      margin-top: 0.7rem;
+      line-height: 1.55;
+    }
+    .paradigm .cap b { color: var(--ink); }
+
+    /* ---------- Sections ---------- */
+    .section { padding: 2.6rem 0; }
+    .title {
+      font-family: 'CMU Serif', Georgia, serif;
+      font-size: 1.7rem;
+      font-weight: 700;
+      letter-spacing: 0;
+      text-align: center;
+      margin-bottom: 1.2rem;
+    }
+    .content p {
+      font-family: 'CMU Serif', Georgia, serif;
+      line-height: 1.72;
+      margin-bottom: 0.9rem;
+    }
+    .content b { color: var(--ink); }
+
+    /* ---------- Impact cards ---------- */
+    .impact-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.4rem; margin-top: 1.4rem; }
+    @media (max-width: 760px) { .impact-grid { grid-template-columns: 1fr; } }
+    .impact {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+      background: #fff;
+      display: flex;
+      flex-direction: column;
+    }
+    .impact .impact-img { width: 100%; height: auto; display: block; border-bottom: 1px solid var(--border); }
+    .impact .impact-body { padding: 1.1rem 1.4rem 0; }
+    .impact h4 {
+      font-family: 'CMU Serif', Georgia, serif;
+      font-weight: 700;
+      font-size: 1.06rem;
+      margin-bottom: 0.4rem;
+    }
+    .impact p { font-size: 0.93rem; line-height: 1.55; color: var(--muted); padding-bottom: 1.1rem; }
+    .impact p b { color: var(--ink); }
+
+    /* ---------- Figure ---------- */
+    .figure { margin: 2rem 0; }
+    .figure img { width: 100%; height: auto; display: block; border-radius: 6px; border: 1px solid #e4e4e4; }
+    .figure .cap {
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.88rem;
+      margin-top: 0.6rem;
+      line-height: 1.55;
+    }
+    .figure .cap b { color: var(--ink); }
+
+    /* ---------- Table ---------- */
+    .table-wrap { overflow-x: auto; margin: 1.4rem 0; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.92rem; }
+    th, td { border-bottom: 1px solid var(--border); padding: 0.5rem 0.7rem; text-align: center; }
+    th { font-family: 'IBM Plex Mono', monospace; font-size: 0.78rem; font-weight: 600; letter-spacing: 0.04em; color: var(--faint); }
+    td:first-child { text-align: left; font-family: 'IBM Plex Mono', monospace; font-size: 0.82rem; }
+
+    /* ---------- Footer ---------- */
+    .footer {
+      margin-top: 3rem;
+      padding: 2rem 0 3.5rem;
+      border-top: 1px solid #e6e6e6;
+      text-align: center;
+      color: var(--faint);
+      font-size: 0.85rem;
+      line-height: 1.7;
+    }
+    .footer a { color: var(--link); }
+
+    .note { color: var(--muted); font-size: 0.92rem; }
+
+    @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+  </style>
+</head>
+<body>
+
+<!-- ================= HERO ================= -->
+<section class="hero">
+  <div class="container has-text-centered">
+    <a class="back-link" href="index.html">&larr; back to the framework paper</a>
+    <h1 class="publication-title">The Operations <strong>Data Flywheel</strong></h1>
+    <p class="publication-sub">Streaming weak-form laws for industrial robotics — a robot identifies its own
+      physics from the noisy operations stream, feeds it back as computation, and the loop spins:
+      <strong>no backpropagation, no batches, no re-fitting.</strong></p>
+    <p class="publication-authors">Sehaj Singh</p>
+    <p class="publication-venue">Industrial robotics &middot; online system identification &middot; 2026</p>
+
+    <div class="publication-links">
+      <a class="external-link button" href="robotics/robotics_nmi.pdf">
+        <span class="icon"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 7V3.5L18.5 9H13zm1 9h-4v-2h4v2zm0-4h-4v-2h4v2z"/></svg></span>
+        Paper (Nature-style)
+      </a>
+      <a class="external-link button" href="https://github.com/sehajr-singhs/morphogenetic-bimodal-networks/tree/main/robotics">
+        <span class="icon"><svg viewBox="0 0 16 16"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg></span>
+        Code &amp; data
+      </a>
+      <a class="external-link button" href="robotics/email_mind_robotics.md">
+        <span class="icon"><svg viewBox="0 0 24 24"><path d="M20 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2zm0 4-8 5-8-5V6l8 5 8-5v2z"/></svg></span>
+        The pitch email
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- ================= PARADIGM ================= -->
+<section class="paradigm">
+  <div class="container">
+    <img src="robotics/figs/fig1_paradigm.png" alt="The system in three panels: (a) a 2-DOF arm under gravity, friction, variable payload, and a socket; (b) the momentum-form law windowed on both sides so every acceleration becomes a weak derivative of a velocity - no signal is differentiated; (c) the closed loop: identified laws feed computed-torque feedforward, cleaner data, better laws.">
+    <p class="cap"><b>The flywheel is only as good as its re-identification rate.</b> Log the stream
+      \( \{\,q,\dot q,\tau\,\} \) at 500 Hz; window the rigid-body law on both sides with a linear operator;
+      identify the coefficients causally, in O(1) memory. The coefficients <em>are</em> the physics —
+      payload in the gravity term, wear in the friction term — and the loop re-identifies continuously,
+      so the deployed model never goes stale. <b>The mechanism stays readable because it is the mechanism.</b></p>
+  </div>
+</section>
+
+<!-- ================= RESULTS ================= -->
+<section class="section">
+  <div class="container">
+    <h2 class="title">Measured, end to end</h2>
+    <div class="content has-text-justified">
+      <p>Everything on this page is the direct output of the experiment suite
+      (<code>robotics/flywheel.py</code> &rarr; <code>robotics.json</code>), a 2-DOF arm with gravity,
+      Coulomb friction, variable payload, and a socket-insertion task, logged at 500 Hz. Every figure is
+      drawn from that JSON.</p>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Result</th>
+            <th>Weak form</th>
+            <th>Finite differences</th>
+            <th>Batch oracle</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>Law direction, 5% noise (deg)</td><td><b>3.4&deg;</b></td><td>9.8&deg;</td><td>4.3&deg;</td></tr>
+          <tr><td>Law direction, 50% noise (deg)</td><td><b>15.0&deg;</b></td><td>32.6&deg;</td><td>11.5&deg;</td></tr>
+          <tr><td>Torque prediction, 5% noise (NMSE)</td><td><b>0.148</b></td><td>0.548</td><td>0.093</td></tr>
+          <tr><td>Flywheel tracking after 2 laps (NMSE)</td><td><b>0.086</b></td><td>0.207</td><td>—</td></tr>
+          <tr><td>Law after mid-run payload change (deg)</td><td><b>24&deg;</b></td><td>50.8&deg;</td><td>—</td></tr>
+          <tr><td>Contact detector SNR</td><td><b>31&times;</b></td><td>18&times;</td><td>—</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="impact-grid">
+      <div class="impact">
+        <img class="impact-img" src="robotics/figs/fig2_law.png" alt="Law recovery under noise: weak form beats finite differences at every noise level and rivals the batch oracle while streaming">
+        <div class="impact-body">
+          <h4>The mechanism stays readable</h4>
+          <p>At 5% noise the weak form recovers the law direction to <b>3.4&deg;</b> — finite differences:
+          9.8&deg;, batch oracle: 4.3&deg; — and predicts commanded torque <b>3.7&times;</b> more accurately
+          than finite differences. The identified coefficients land on the true physics: the law vector
+          <em>is</em> the mechanism.</p>
+        </div>
+      </div>
+      <div class="impact">
+        <img class="impact-img" src="robotics/figs/fig3_flywheel.png" alt="The flywheel: tracking error drops 7.1x in two laps with the weak form and re-adapts to a payload change; finite differences stall">
+        <div class="impact-body">
+          <h4>The flywheel spins; FD stalls</h4>
+          <p>Weak-form laws feeding computed-torque feedforward cut tracking error <b>7.1&times;</b> in two
+          laps. When a <b>1.5 kg payload</b> is added mid-experiment, the weak form re-adapts within
+          <b>one lap</b>; the finite-difference law degrades to a 50.8&deg; direction error.</p>
+        </div>
+      </div>
+      <div class="impact">
+        <img class="impact-img" src="robotics/figs/fig4_fleet.png" alt="Fleet-level mechanism reading: law vectors separate payload and wear variants and read payload mass from the gravity coefficients">
+        <div class="impact-body">
+          <h4>The fleet is readable</h4>
+          <p>Across six robots, identified law vectors separate payload and wear variants
+          (<b>direction cosine 0.99</b>) and read payload mass to within <b>17%</b> from the gravity
+          coefficients — a per-robot health readout from the operations stream alone.</p>
+        </div>
+      </div>
+      <div class="impact">
+        <img class="impact-img" src="robotics/figs/fig5_contact.png" alt="Contact detection: the frozen nominal law doubles as a contact detector with 31x residual SNR during a socket insertion">
+        <div class="impact-body">
+          <h4>Contact, without sensors</h4>
+          <p>The frozen nominal law doubles as a contact detector with <b>31&times;</b> residual SNR during a
+          socket insertion — per-robot, threshold-free, from signals the robot already logs. Contact engaged
+          58% of the maneuver.</p>
+        </div>
+      </div>
+      <div class="impact">
+        <img class="impact-img" src="robotics/figs/fig6_data.png" alt="Data efficiency: the weak form needs 4.8 seconds of the stream at 5% noise; the LSTM baseline gives no law at all">
+        <div class="impact-body">
+          <h4>Seconds, not batches</h4>
+          <p>The weak form reaches a usable law from <b>4.8 seconds</b> of stream at 5% noise (finite
+          differences: 16.7&deg;). The LSTM baseline — 60 epochs, no mechanism — predicts one step ahead
+          and explains nothing.</p>
+        </div>
+      </div>
+      <div class="impact">
+        <img class="impact-img" src="robotics/figs/fig1_paradigm.png" alt="The identification layer: window both sides of the momentum-form law so every acceleration is a weak derivative of a velocity - no signal is differentiated">
+        <div class="impact-body">
+          <h4>Why it works</h4>
+          <p>Integration by parts moves derivatives off the noisy data and onto the analytic window:
+          finite differences amplify noise by \(2/\Delta t^2\) (≈ 500,000 at 2 ms); the weak form amplifies
+          by \(\lambda^2\). That &gt;1,000&times; reduction is the difference between online and offline
+          identification.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= THEORY ================= -->
+<section class="section" style="padding-top: 0.4rem;">
+  <div class="container">
+    <h2 class="title">The law, in one line</h2>
+    <div class="content has-text-justified">
+      <p>For a 2-DOF arm, joint 1's law in momentum form is
+      \[ \tau_1 = A_0 a_1 + B_0 a_2 + B_2 c_2(2a_1{+}a_2) + G_1\cos q_1 + G_2\cos(q_1{+}q_2) + b_1 v_1 + f_{c1}\,\mathrm{sgn}\,v_1 . \]
+      Because the window operator \(W\) is linear, windowing both sides is exact:
+      \[ W[\tau_1] = A_0\, y_{v_1} + B_0\, y_{v_2} + B_2\, y_{c_2(2v_1+v_2)} + G_1 W[\cos q_1] + \cdots ,\qquad
+      y_f \equiv \lambda\big(f - W[f]\big), \]
+      where integration by parts replaces every <em>acceleration</em> with the weak derivative of a
+      <em>velocity</em>. <b>No signal is ever differentiated.</b> Each joint fits its own minimal basis with
+      column-normalized recursive least squares; the coefficients are the physics.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ================= FOOTER ================= -->
+<footer class="footer">
+  <div class="container">
+    Companion to <a href="index.html">Morphogenetic Bi-Modal Networks</a> — the gradient-free, angle-paradigm
+    framework this descends from. Every number here is measured; the suite runs in ~2 minutes.
+    <br><a href="https://github.com/sehajr-singhs/morphogenetic-bimodal-networks">github</a> &middot;
+    <a href="robotics/email_mind_robotics.md">the pitch</a> &middot;
+    <a href="robotics/robotics_nmi.pdf">the paper</a>
+  </div>
+</footer>
+
+</body>
+</html>

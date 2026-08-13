@@ -138,7 +138,8 @@ growing along the hidden law (dashed) and the token following it.
 | `data_nino34.csv` | NINO3.4 SST anomaly index (NOAA/PSL, public domain) |
 | `game/` | Flowrunner results + animated clip + `preview.html` (self-contained, open in a browser) |
 | `figs/` | nine paper figures |
-| `docs/` | GitHub Pages site (landing page, game demo, papers, figures) |
+| `docs/` | GitHub Pages site (landing page, game demo, papers, figures, robotics page) |
+| `robotics/` | The Operations Data Flywheel — streaming weak-form laws for industrial robotics: arm simulator, online identifier, closed-loop flywheel, fleet + contact + data-efficiency experiments, NMI-style paper, and a cover email to Mind Robotics |
 
 ## License
 
@@ -161,6 +162,9 @@ python flowgame.py --episodes 4 --out game            # the maze game + clip
 python make_figures.py
 python make_paradigm_fig.py                            # the angle-paradigm hero figure
 python test_biomaterial_net.py
+
+# the robotics flywheel project
+cd robotics && python flywheel.py && python make_figs.py && python test_robotics.py
 ```
 
 Documented failure modes and their patches (bilinear-RLS collapse, noise-driven rotation
